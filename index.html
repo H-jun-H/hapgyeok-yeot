@@ -1,0 +1,2047 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>합격엿 교문 — 교문에 합격엿 던지고 응원 남기기</title>
+<meta name="description" content="수능·취업·자격증 서버의 3D 교문에 합격엿을 던져 붙이고 응원 한마디를 남겨요. 누가 던진 엿이 실시간으로 날아와 붙어요.">
+<meta name="theme-color" content="#0f1728">
+<meta property="og:type" content="website">
+<meta property="og:title" content="합격엿 교문">
+<meta property="og:description" content="교문에 합격엿 던지고 응원 남기기 · 수능 · 취업 · 자격증 서버">
+<meta property="og:url" content="https://h-jun-h.github.io/hapgyeok-yeot/">
+<meta property="og:image" content="https://h-jun-h.github.io/hapgyeok-yeot/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101829'/%3E%3Cg transform='rotate(-30 32 32)'%3E%3Crect x='10' y='25' width='44' height='14' rx='7' fill='%23e8a23a'/%3E%3Crect x='28' y='25' width='8' height='14' fill='%23e0463a'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; font: 14px system-ui, sans-serif; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<!-- 분석 도구(GA4, Microsoft Clarity 등) 스니펫은 여기에 넣으세요 -->
+<script src="firebase-config.js"></script>
+<script src="backend-firebase.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum&family=Nanum+Pen+Script&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<style>
+/* Layout: one narrow phone-game column — title, server picker, live counter, the 3D gate, the throw console, the cheer feed. Single committed night look; each server tints its own accent. */
+:root {
+  --night: #0f1728;
+  --night-2: #18223b;
+  --night-3: #222e4d;
+  --amber: #e8a23a;
+  --amber-hi: #f6c567;
+  --amber-deep: #a85a18;
+  --ribbon: #e0463a;
+  --paper: #f4ead5;
+  --paper-ink: #2a2420;
+  --paper-meta: #8a6a3a;
+  --ink: #ede6d6;
+  --muted: #9ba5bd;
+  --line: rgba(237, 230, 214, 0.12);
+  --ok: #6fcf97;
+  --warn: #f2c14e;
+  --busy: #ef6b5b;
+  --srv: #e8a23a;
+  --f-display: "Black Han Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-body: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-hand: "Nanum Pen Script", "Gowun Dodum", cursive;
+  color-scheme: dark;
+}
+html, body { min-height: 100%; }
+body {
+  background: var(--night);
+  background-image: radial-gradient(120% 50% at 0% 0%, color-mix(in srgb, var(--srv) 14%, transparent), transparent 60%);
+  color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+}
+.app {
+  max-width: 540px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(36px, 10vw, 48px); line-height: 1; margin: 0 0 6px; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--amber); }
+.lede { margin: 0; color: var(--muted); font-size: 14px; }
+.tools { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
+.icon-btn {
+  display: inline-flex; align-items: center; gap: 6px; background: var(--night-2); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.icon-btn:hover { color: var(--ink); }
+.icon-btn svg { width: 15px; height: 15px; }
+.icon-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.servers-h { margin: 0 0 8px; font-size: 12px; color: var(--muted); letter-spacing: 0.08em; }
+.servers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.srv {
+  --c: var(--amber);
+  min-width: 0; text-align: left; font: inherit; color: var(--ink); cursor: pointer;
+  background: var(--night-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 10px 9px;
+  display: flex; flex-direction: column; gap: 4px; transition: border-color .15s, background .15s;
+}
+.srv:hover { background: var(--night-3); }
+.srv[aria-current="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 12%, var(--night-2)); box-shadow: inset 0 0 0 1px var(--c); }
+.srv:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
+.srv .nm { font-family: var(--f-display); font-size: 17px; line-height: 1.1; color: var(--c); white-space: nowrap; }
+.srv .st { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 0; }
+.srv .st i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: none; }
+.srv .st[data-lv="2"] i { background: var(--warn); }
+.srv .st[data-lv="3"] i { background: var(--busy); }
+.srv .ct { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.counter {
+  display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 4px 12px; padding: 14px 16px; border-radius: 14px;
+  background: linear-gradient(180deg, var(--night-2), rgba(24, 34, 59, 0.4)); border: 1px solid var(--line);
+}
+.tag { display: inline-block; font-family: var(--f-display); font-size: 12px; letter-spacing: .04em; color: var(--night); background: var(--srv); padding: 2px 9px 1px; border-radius: 4px; margin-bottom: 6px; }
+.counter .label { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; }
+.counter .num { font-family: var(--f-display); font-size: 40px; line-height: 1; color: var(--amber-hi); font-variant-numeric: tabular-nums; }
+.counter .num small { font-family: var(--f-body); font-size: 15px; color: var(--ink); margin-left: 4px; }
+.counter .side { text-align: right; font-size: 12px; color: var(--muted); }
+.counter .side b { display: block; font-family: var(--f-display); font-weight: 400; font-size: 20px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.sync { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.sync i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
+.sync[data-mode="live"] i { background: var(--ok); box-shadow: 0 0 0 3px rgba(111, 207, 151, 0.18); }
+.sync[data-mode="local"] i { background: var(--amber); }
+
+.scene {
+  position: relative; width: 100%; max-width: 100%; aspect-ratio: 4 / 5; border-radius: 18px; overflow: hidden; background: #070b16;
+  box-shadow: 0 30px 70px -26px rgba(0, 0, 0, 0.85), inset 0 0 0 1px var(--line);
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+.scene canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.scene.charging canvas { cursor: grabbing; }
+.gauge {
+  position: absolute; left: 14px; bottom: 18px; width: 16px; height: 38%; z-index: 2; border-radius: 6px;
+  background: linear-gradient(to top, #3a4256 0 55%, #6fcf97 55% 85%, #e0463a 85% 100%);
+  box-shadow: 0 0 0 4px rgba(10, 14, 26, 0.6); opacity: 0; transition: opacity .15s; pointer-events: none;
+}
+.gauge::before { content: ""; position: absolute; left: -4px; right: -4px; bottom: 68%; height: 6%; background: var(--amber-hi); border-radius: 2px; box-shadow: 0 0 10px var(--amber-hi); }
+.gauge .needle { position: absolute; left: -6px; right: -6px; height: 3px; background: var(--paper); bottom: 0; border-radius: 2px; box-shadow: 0 0 6px rgba(0,0,0,.6); }
+.gauge .needle::after { content: ""; position: absolute; right: -9px; top: -5px; border: 6.5px solid transparent; border-left: 8px solid var(--paper); }
+.gauge .lb { position: absolute; top: -20px; left: -1px; font-size: 10px; color: rgba(237,230,214,.75); white-space: nowrap; }
+.scene.charging .gauge, .scene.flying .gauge { opacity: 1; }
+.scene-top {
+  position: absolute; top: 12px; left: 12px; right: 12px; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 8px; pointer-events: none;
+}
+.pill { font-size: 11px; color: rgba(237, 230, 214, .85); background: rgba(8, 12, 22, .55); border: 1px solid rgba(237,230,214,.12); padding: 3px 9px; border-radius: 999px; white-space: nowrap; backdrop-filter: blur(6px); }
+.pill b { font-family: var(--f-display); font-weight: 400; color: var(--srv); margin-right: 4px; }
+.live-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--busy); margin-right: 5px; vertical-align: 1px; animation: blink 1.6s infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+.aimtip {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 2; font-size: 11px; color: rgba(237, 230, 214, 0.78);
+  background: rgba(8, 12, 22, 0.55); padding: 3px 10px; border-radius: 999px; pointer-events: none; white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis;
+}
+.floats { position: absolute; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
+.fl {
+  position: absolute; transform: translate(-50%, -50%); font-family: var(--f-display); font-size: 30px; color: var(--amber);
+  text-shadow: 0 2px 0 rgba(10, 14, 26, .9), 0 0 14px rgba(10, 14, 26, .8); animation: rise 1.1s ease-out forwards; white-space: nowrap;
+}
+.fl.big { font-size: 48px; color: var(--amber-hi); text-shadow: 0 3px 0 rgba(10,14,26,.9), 0 0 24px rgba(246,197,103,.55); }
+.fl.dim { color: #cfd6e6; font-size: 26px; }
+.fl.peer { color: var(--srv); font-size: 18px; font-family: var(--f-body); font-weight: 700; }
+@keyframes rise { 0% { opacity: 0; transform: translate(-50%, -30%) scale(.6); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); } 30% { transform: translate(-50%, -55%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -160%) scale(1); } }
+.bubble {
+  position: absolute; z-index: 4; transform: translate(-50%, calc(-100% - 14px)); max-width: 220px; min-width: 120px;
+  background: var(--paper); color: var(--paper-ink); border-radius: 10px; padding: 8px 12px 9px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45); pointer-events: none;
+}
+.bubble::after { content: ""; position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%) rotate(45deg); width: 12px; height: 12px; background: var(--paper); }
+.bubble .to { font-size: 11px; color: var(--paper-meta); }
+.bubble .m { font-family: var(--f-hand); font-size: 24px; line-height: 1.05; word-break: keep-all; overflow-wrap: anywhere; }
+.nogl { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); font-size: 14px; }
+
+.console { display: flex; flex-direction: column; gap: 14px; }
+.field-label { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; margin-bottom: 8px; display: block; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; border: 0; margin: 0; padding: 0; }
+.chips legend { padding: 0; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip span { display: inline-block; padding: 7px 13px; border-radius: 999px; font-size: 13px; border: 1px solid var(--line); background: var(--night-2); color: var(--ink); cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.chip input:checked + span { background: var(--paper); color: var(--paper-ink); border-color: var(--paper); }
+.chip input:focus-visible + span { outline: 2px solid var(--amber); outline-offset: 2px; }
+.msg-row { display: flex; gap: 8px; }
+.msg-wrap { position: relative; flex: 1; min-width: 0; }
+#msg { width: 100%; box-sizing: border-box; background: var(--paper); color: var(--paper-ink); border: 0; border-radius: 12px; padding: 10px 52px 8px 14px; font-family: var(--f-hand); font-size: 26px; line-height: 1.2; }
+#msg::placeholder { color: #a8957a; }
+#msg:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.count { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--paper-meta); font-variant-numeric: tabular-nums; }
+.ghost-btn { flex: none; background: var(--night-2); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 0 14px; font: inherit; font-size: 13px; cursor: pointer; }
+.ghost-btn:hover { background: var(--night-3); }
+.ghost-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.throw {
+  position: relative; overflow: hidden; width: 100%; font-family: var(--f-display); font-size: 22px; letter-spacing: .02em; color: #2a1606;
+  background: linear-gradient(180deg, var(--amber-hi), var(--amber) 60%, #d78a26); border: 0; border-radius: 16px; padding: 18px 16px 16px; cursor: pointer;
+  box-shadow: 0 6px 0 var(--amber-deep), 0 14px 30px -10px rgba(232, 162, 58, 0.55);
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .08s, box-shadow .08s;
+}
+.throw .fill { position: absolute; inset: 0 auto 0 0; width: 0%; background: rgba(224, 70, 58, 0.28); pointer-events: none; }
+.throw .txt { position: relative; }
+.throw.is-charging { transform: translateY(4px); box-shadow: 0 2px 0 var(--amber-deep), 0 8px 20px -10px rgba(232, 162, 58, 0.55); }
+.throw:disabled { cursor: default; filter: saturate(.6) brightness(.85); }
+.throw:focus-visible { outline: 3px solid var(--paper); outline-offset: 3px; }
+.hint { margin: 0; font-size: 12px; color: var(--muted); text-align: center; text-wrap: balance; }
+.hint b { color: var(--ok); font-weight: 400; }
+.hint em { color: var(--amber-hi); font-style: normal; }
+.msg-note { margin: 6px 2px 0; font-size: 11px; color: var(--muted); }
+.msg-warn { margin: 6px 2px 0; font-size: 12px; color: #ff9a8a; display: flex; gap: 6px; align-items: flex-start; }
+.msg-warn::before { content: "!"; flex: none; width: 15px; height: 15px; border-radius: 50%; background: #ef6b5b; color: #1a0a08; font-weight: 700; font-size: 11px; line-height: 15px; text-align: center; margin-top: 1px; }
+.msg-warn[data-cat="care"] { color: var(--amber-hi); }
+.msg-warn[data-cat="care"]::before { content: "♥"; background: var(--amber); }
+#msg[aria-invalid="true"] { outline: 2px solid #ef6b5b; outline-offset: 2px; }
+.feed li { position: relative; }
+.feed .mod {
+  position: absolute; top: 6px; right: 6px; font: inherit; font-size: 11px; color: var(--paper-meta); background: rgba(42,36,32,0.06);
+  border: 0; border-radius: 6px; padding: 2px 7px; cursor: pointer; opacity: .75;
+}
+.feed .mod:hover, .feed .mod:focus-visible { opacity: 1; background: rgba(42,36,32,0.12); }
+.feed .mod.danger { color: #b0281c; }
+.feed li .m { padding-right: 34px; }
+.status { min-height: 1.4em; margin: -4px 0 0; text-align: center; font-size: 13px; color: var(--ink); }
+
+.feed h2 { font-family: var(--f-display); font-weight: 400; font-size: 22px; margin: 6px 0 10px; }
+.feed h2 span { color: var(--srv); }
+.feed ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.feed li { min-width: 0; background: var(--paper); color: var(--paper-ink); border-radius: 10px; padding: 10px 12px 9px; }
+.feed li:nth-child(4n+1) { transform: rotate(-1.2deg); }
+.feed li:nth-child(4n+2) { transform: rotate(.9deg); }
+.feed li:nth-child(4n+3) { transform: rotate(.6deg); }
+.feed li:nth-child(4n) { transform: rotate(-.7deg); }
+.feed .m { font-family: var(--f-hand); font-size: 23px; line-height: 1.05; word-break: keep-all; overflow-wrap: anywhere; }
+.feed .meta { margin-top: 4px; font-size: 11px; color: var(--paper-meta); display: flex; gap: 6px; flex-wrap: wrap; }
+.feed .mine { color: var(--ribbon); font-weight: 700; }
+.feed .livebadge { color: #2f6b4c; font-weight: 700; }
+.feed .empty { grid-column: 1 / -1; background: transparent; color: var(--muted); border: 1px dashed var(--line); transform: none !important; text-align: center; padding: 18px 12px; font-size: 13px; }
+.foot { font-size: 11px; color: var(--muted); text-align: center; margin: 4px 0 0; }
+
+.modal {
+  position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(8, 12, 22, 0.78); backdrop-filter: blur(4px);
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.sheet { width: 100%; max-width: 380px; max-height: 100%; overflow: auto; background: var(--night-2); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px; animation: pop .28s cubic-bezier(.2, 1.4, .4, 1); }
+.sheet h3 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 26px; }
+.sheet h3 em { font-style: normal; color: var(--amber-hi); }
+.sheet img { width: 100%; max-width: 100%; aspect-ratio: 4 / 5; border-radius: 12px; display: block; background: var(--night); }
+.sheet .row { display: flex; gap: 8px; }
+.sheet .row button { flex: 1; }
+.btn-primary { font-family: var(--f-display); font-size: 17px; color: #2a1606; background: var(--amber); border: 0; border-radius: 12px; padding: 13px 12px 11px; cursor: pointer; }
+.btn-primary:focus-visible { outline: 2px solid var(--paper); outline-offset: 2px; }
+.sheet .ghost-btn { padding: 12px; }
+.sheet .row button[hidden] { display: none !important; }
+.sheet .note { margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
+@keyframes pop { from { transform: scale(.92); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (max-width: 380px) {
+  .feed ul { grid-template-columns: 1fr; }
+  .counter .num { font-size: 34px; }
+  .srv .nm { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet, .fl, .live-dot { animation: none; }
+  .feed li { transform: none !important; }
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <div>
+      <h1>합격엿 <em>교문</em></h1>
+      <p class="lede">교문에 엿을 던져 붙이고 응원 한마디를 남겨요.</p>
+    </div>
+    <div class="tools">
+      <button class="icon-btn" id="soundBtn" type="button" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path id="soundWave" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+        <span id="soundTxt">소리 켜짐</span>
+      </button>
+      <button class="icon-btn" id="gfxBtn" type="button" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6 7 18.2l1.9-5.8L4 8.8h6.1z"/></svg>
+        <span id="gfxTxt">그래픽 높음</span>
+      </button>
+    </div>
+  </header>
+
+  <nav aria-label="서버 선택">
+    <div class="servers-h">서버 선택</div>
+    <div class="servers" id="servers"></div>
+  </nav>
+
+  <section class="counter" aria-label="서버 집계">
+    <div>
+      <div class="tag" id="tag">수능 D-16</div>
+      <div class="label" id="countLabel">수능서버에 붙은 엿</div>
+      <div class="num"><span id="total">0</span><small>개</small></div>
+    </div>
+    <div class="side">응원한 사람<b id="people">0</b></div>
+    <div class="sync" id="sync" data-mode="wait"><i></i><span id="syncTxt">교문 상황을 불러오는 중이에요</span></div>
+  </section>
+
+  <section class="scene" id="scene">
+    <canvas id="cv" role="img" aria-label="밤의 교문을 3D로 보여주는 장면. 사람들이 던져 붙인 엿이 교문에 붙어 있어요. 붙은 엿을 누르면 응원 문구가 보여요."></canvas>
+    <div class="scene-top" aria-hidden="true">
+      <span class="pill" id="scenePill"><b id="sceneSrv">수능서버</b><span id="sceneWeather">첫눈 · 은행잎</span></span>
+      <span class="pill" id="onlinePill" hidden><span class="live-dot"></span><span id="onlineTxt">접속 1</span></span>
+    </div>
+    <div class="gauge" id="gauge" aria-hidden="true"><span class="lb">힘</span><div class="needle" id="needle"></div></div>
+    <div class="floats" id="floats"></div>
+    <div class="bubble" id="bubble" hidden><div class="to" id="bTo"></div><div class="m" id="bMsg"></div></div>
+    <div class="aimtip" id="aimtip">꾹 누른 채 좌우로 밀면 조준 · 붙은 엿을 톡 누르면 응원 보기</div>
+  </section>
+
+  <section class="console" aria-label="엿 던지기">
+    <fieldset class="chips" id="toChips"><legend class="field-label">누구에게 보내는 엿인가요?</legend></fieldset>
+    <div>
+      <label class="field-label" for="msg">엿에 적을 응원 한마디</label>
+      <div class="msg-row">
+        <div class="msg-wrap">
+          <input id="msg" type="text" maxlength="24" autocomplete="off" placeholder="찍어도 다 맞아라" aria-describedby="msgNote msgWarn">
+          <span class="count" id="msgCount">0/24</span>
+        </div>
+        <button class="ghost-btn" id="shuffle" type="button">다른 문구</button>
+      </div>
+      <p class="msg-warn" id="msgWarn" role="alert" hidden></p>
+      <p class="msg-note" id="msgNote">욕설·비하·성적인 말·불합격 저주·연락처·홍보·도배는 교문에 붙지 않아요.</p>
+    </div>
+    <button class="throw" id="throwBtn" type="button" aria-describedby="hint">
+      <span class="fill" id="throwFill"></span>
+      <span class="txt" id="throwTxt">꾹 눌러서 힘 모으기</span>
+    </button>
+    <p class="hint" id="hint">누르고 있으면 힘이 오르내려요. <b>초록 칸</b>에서 떼면 착 붙고, <em>금색 줄</em>이면 찰떡! 누른 채 좌우로 밀면 조준돼요. 키보드는 스페이스와 ←→.</p>
+    <p class="status" id="status" aria-live="polite"></p>
+  </section>
+
+  <section class="feed" aria-labelledby="feedTitle">
+    <h2 id="feedTitle"><span id="feedSrv">수능서버</span>에 방금 붙은 응원</h2>
+    <ul id="feed"><li class="empty">응원을 불러오는 중이에요</li></ul>
+  </section>
+  <p class="foot" id="foot">2027학년도 대학수학능력시험 · 2026년 11월 19일 (목)</p>
+</main>
+
+<div class="modal" id="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="resTitle">
+    <h3 id="resTitle">착! <em>붙었어요</em></h3>
+    <img id="cardImg" alt="합격엿 응원 카드">
+    <div class="row">
+      <button class="btn-primary" id="shareBtn" type="button" hidden>공유하기</button>
+      <button class="btn-primary" id="saveBtn" type="button">카드 이미지 저장</button>
+      <button class="ghost-btn" id="againBtn" type="button">한 번 더 던지기</button>
+    </div>
+    <button class="ghost-btn" id="copyBtn" type="button" hidden>게임 링크 복사</button>
+    <p class="note" id="saveNote">저장한 카드를 보내 응원해 주세요.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* =====================================================================
+     SERVERS
+     ===================================================================== */
+  const EXAM = Date.UTC(2026, 10, 19);
+  const SERVERS = {
+    suneung: {
+      name: "수능서버", col: "wall_suneung", color: "#e8a23a", weather: "첫눈 · 은행잎",
+      label: "수능서버에 붙은 엿", foot: "2027학년도 대학수학능력시험 · 2026년 11월 19일 (목)",
+      to: ["수험생 모두", "친구에게", "동생에게", "아들·딸에게", "나에게"],
+      cheers: ["찍어도 다 맞아라", "수능 대박 나자!", "그동안 진짜 고생했어", "끝나고 맛있는 거 먹자", "평소처럼만 하면 돼", "너는 이미 충분해", "OMR 밀리지 말기!", "긴장 말고 숨 한번 크게", "오늘을 위해 달려왔잖아", "시험 끝나면 놀러가자"],
+      fortunes: ["헷갈린 두 개 중에 고른 게 정답인 날", "OMR 마킹이 한 번에 깔끔하게 끝나는 날", "어제 본 개념이 그대로 나오는 날", "시계를 볼 때마다 시간이 넉넉한 날", "도시락이 딱 알맞게 맛있는 날", "듣기평가가 유난히 또렷한 날", "어려운 문제도 술술 풀리는 날"],
+      tag() { const d = Math.round((EXAM - seoulToday()) / 86400000); return d > 0 ? "수능 D-" + d : d === 0 ? "수능 D-DAY" : "수능 수고했어요"; }
+    },
+    job: {
+      name: "취업서버", col: "wall_job", color: "#7fb0ff", weather: "밤비 · 오피스 야경",
+      label: "취업서버에 붙은 엿", foot: "서류 · 인적성 · 면접 · 최종까지, 모든 취준생을 응원해요",
+      to: ["취준생 모두", "친구에게", "동기에게", "나에게"],
+      cheers: ["최종 합격 가즈아", "서류 광탈 금지", "면접에서 할 말 다 하기", "이번엔 진짜 된다", "첫 월급 날 밥 살게", "네 경험은 다 무기야", "인적성 찍신 강림", "합격 문자만 와라", "넌 뽑힐 수밖에 없어"],
+      fortunes: ["면접관이 고개를 끄덕이는 날", "자소서 첫 문장이 술술 써지는 날", "합격 메일이 받은편지함에 도착하는 날", "PT 발표가 시간에 딱 맞춰 끝나는 날", "인적성을 시간 안에 다 푸는 날", "준비한 질문만 골라서 나오는 날", "최종 발표 새로고침 한 번에 합격인 날"],
+      tag() { return "하반기 공채 시즌"; }
+    },
+    cert: {
+      name: "자격증서버", col: "wall_cert", color: "#6fcf97", weather: "낙엽 · 새벽 안개",
+      label: "자격증서버에 붙은 엿", foot: "필기 · 실기 · 어학까지, 모든 자격증 수험생을 응원해요",
+      to: ["수험생 모두", "친구에게", "동료에게", "나에게"],
+      cheers: ["한 번에 합격!", "과락만 피하자", "실기까지 한 방에", "기출 그대로 나와라", "60점이면 충분해", "자격증 부자 되자", "계산기 배터리 든든", "합격 확인 바로 뜨길", "이번 회차가 마지막"],
+      fortunes: ["외운 기출이 그대로 나오는 날", "과락 없이 평균을 넉넉히 넘는 날", "실기 도면이 한 번에 그려지는 날", "제출 버튼 누르자마자 합격이 뜨는 날", "헷갈리던 공식이 시험장에서 떠오르는 날", "실습 장비가 말을 잘 듣는 날"],
+      tag() { return "상시 접수 중"; }
+    }
+  };
+  const ORDER = ["suneung", "job", "cert"];
+
+  /* =====================================================================
+     HELPERS
+     ===================================================================== */
+  const $ = (id) => document.getElementById(id);
+  function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+  const easeInOut = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  function seoulParts() {
+    const p = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).formatToParts(new Date());
+    const o = {}; for (const x of p) o[x.type] = Number(x.value); if (o.hour === 24) o.hour = 0; return o;
+  }
+  function seoulToday() { const o = seoulParts(); return Date.UTC(o.year, o.month - 1, o.day); }
+  function timeAgo(ts) {
+    const s = Math.max(0, (Date.now() - ts) / 1000);
+    if (s < 60) return "방금"; if (s < 3600) return Math.floor(s / 60) + "분 전";
+    if (s < 86400) return Math.floor(s / 3600) + "시간 전"; return Math.floor(s / 86400) + "일 전";
+  }
+  function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } }
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const fmt = (n) => Math.round(n).toLocaleString("ko-KR");
+  const STICK_LO = 0.55, STICK_HI = 0.85, PERF_LO = 0.68, PERF_HI = 0.74;
+  const HIT = { x0: -3.3, x1: 3.3, y0: 0.5, y1: 3.0 };
+
+  /* =====================================================================
+     CHEER FILTER
+     Rules (checked in this order):
+       contact  연락처·링크·계정·홍보 문구
+       spam     같은 글자 6번 이상 반복, 글자 없는 문구, 자음만 길게
+       care     자살·자해를 떠올리게 하는 말 (막고, 도움받을 곳을 안내)
+       abuse    욕설·비속어·모욕 (초성·띄어쓰기·숫자 섞기 같은 우회 포함)
+       hate     장애·지역·성별·국적·출신 학교 등 집단 비하
+       sexual   성적인 표현
+       curse    불합격·재수를 비는 말, "어차피 안 돼" 같은 깎아내리기
+     The same check also hides other people's messages on screen, so text
+     that slips past someone else's copy of the page never gets displayed.
+     ===================================================================== */
+  const MOD = (() => {
+    const LEET = { "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s", "!": "i" };
+    const SAFE = ["시발점", "시발역", "시바견", "씹어먹", "광탈금지", "광탈하지마", "광탈ㄴㄴ", "떨어지지마", "떨지마", "망하지마", "포기하지마", "불합격하지마",
+      "걱정아꺼져", "걱정꺼져", "긴장꺼져", "불안꺼져", "잡생각꺼져", "개잘", "개쩔", "개좋", "개멋", "개이득", "개꿀"];
+    const RULES = [
+      ["care", "H", /자살|죽고싶|죽을래|죽어버릴|뛰어내리|목매|손목긋|살기싫|사라지고싶|자해|극단적선택/],
+      ["abuse", "H", /씨[이으]*[발빨벌뻘팔펄밸바빠]|[쒸씌쓰][발빨벌]|ㅆㅂ|ㅅㅂ|ㅂㅅ|ㅄ|ㅈㄹ|ㅗ|병[신싄쉰]|븅[신쉰]|빙[신쉰]|[좆좃좇]|존나|졸라|ㅈㄴ|개[새세색섀쌔쉐쉑]|개[같갓]이|개소리|개년|개놈|지랄|염병|옘병|엠창|느금|느개비|니애[미비]|니미|애미[없뒤]|씹[새년놈창]|썅|쌍[놈년]|후레|등신|머저리|또라이|돌아이|미친[놈년새것]|꺼져|닥쳐|뒤[질져]|죽어라|죽어버려|대가리|주둥이|아가리/],
+      ["abuse", "W", /(^|\s)(시|쉬)[이으]*(발|벌|빨|팔)(?!점|역)|(^|\s)시바(\s|$)/],
+      ["abuse", "L", /fuck|fuk|fck|shit|bitch|asshole|bastard|cunt|wtf|stfu|motherf|sonofa/],
+      ["hate", "H", /애자|틀딱|틀니|급식충|맘충|한남충|한남(?!동|대|역)|김치녀|된장녀|짱깨|짱개|쪽바리|홍어(?!회|삼합|무침|탕)|흑형|깜둥|니거|게이새|정신병자|정병|장애인새|장애새|병자새|지잡|노예새/],
+      ["hate", "L", /nigg|retard|faggot|chink/],
+      ["sexual", "H", /섹스|쎅스|섹수|야동|자위|봊|잦이|강간|성폭행|따먹|빨통|젖꼭|딸딸|딸치|사까시|펠라|창녀|걸레년|원나잇/],
+      ["sexual", "W", /(보지|자지)(?!\s*(마|말|않|못))/],
+      ["sexual", "L", /sex|porn|nude|boob|pussy|penis|horny/],
+      ["curse", "H", /떨어져라|떨어져버려|떨어지길|떨어졌으면|떨어지면좋|떨어질듯|떨어질걸|불합격(해라|하길|했으면|해버려|이길)|불합(하길|해라)|광탈(해라|하길|했으면|각)|낙방(해라|하길)|망해라|망하길|망했으면|망해버려|폭망(해라|하길|각)|재수(해라|하길|각|확정)|삼수(해라|각|확정)|사수해라|장수생각|빵점(맞아|받아)|영점(맞아|받아)|넌안돼|너는안돼|넌절대|어차피(안|떨|망|불)|포기해라|포기하길|포기해버려|가망없|노답|소용없|인생망|인생끝|합격못할|못붙을|안붙을/]
+    ];
+    const MSG = {
+      contact: "연락처, 링크, 계정 아이디, 홍보 문구는 붙일 수 없어요.",
+      spam: "같은 글자만 반복하거나 글자가 없는 문구는 붙일 수 없어요.",
+      care: "많이 힘든 마음이 느껴져요. 혼자 버티지 말고 109(자살예방상담전화)에 이야기해 보세요. 24시간 받아요.",
+      abuse: "욕설이나 비속어가 들어 있어요. 응원하는 말로 바꿔 주세요.",
+      hate: "사람이나 집단을 깎아내리는 말은 붙일 수 없어요.",
+      sexual: "성적인 표현은 붙일 수 없어요.",
+      curse: "떨어지라는 말은 합격 교문에 붙일 수 없어요. 합격을 비는 말로 바꿔 주세요."
+    };
+    function forms(raw) {
+      const base = raw.normalize("NFC").replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).toLowerCase();
+      let H = base.replace(/[^가-힣ㄱ-ㅎㅏ-ㅣ]/g, "");
+      for (const w of SAFE) H = H.split(w).join("");
+      const W = base.replace(/[^가-힣ㄱ-ㅎㅏ-ㅣ\s]/g, "").replace(/\s+/g, " ").trim();
+      const L = base.replace(/[0-9@$!]/g, (c) => LEET[c] || c).replace(/[^a-z]/g, "");
+      return { H, W, L };
+    }
+    function check(text) {
+      const raw = String(text || "").trim();
+      if (!raw) return { ok: true };
+      const fail = (cat) => ({ ok: false, cat, msg: MSG[cat] });
+      // contact & ads
+      const digits = raw.replace(/[\s\-.]/g, "");
+      if (/\d{7,}/.test(digits) || /0\s*1\s*[016789][\s\-.]*\d{3,4}[\s\-.]*\d{4}/.test(raw)) return fail("contact");
+      if (/(https?:|www\.|[a-z0-9-]+\.(com|net|org|kr|co|io|me|gg|ly|xyz|site|shop|link|app|to)\b)/i.test(raw) || /@[a-z0-9_.]{3,}/i.test(raw)) return fail("contact");
+      const f = forms(raw);
+      if (/카톡|카카오톡|오픈채팅|오픈톡|텔레그램|인스타|디엠|광고|홍보|할인코드|쿠폰|부업|수익보장|코인|토토|카지노|바카라|대출|돈벌|선착순|맞팔/.test(f.H)) return fail("contact");
+      if (/telegram|insta|kakao|discord|tiktok|youtube|promo|coupon|casino|crypto/.test(f.L)) return fail("contact");
+      // spam
+      if (/(.)\1{5,}/u.test(raw.replace(/\s/g, ""))) return fail("spam");
+      const letters = raw.match(/[가-힣a-zA-Z]/g);
+      const jamo = raw.match(/[ㄱ-ㅎㅏ-ㅣ]/g);
+      if (!letters && (!jamo || jamo.length > 5)) return fail("spam");
+      // word rules
+      for (const [cat, form, re] of RULES) if (re.test(f[form])) return fail(cat);
+      return { ok: true };
+    }
+    return { check };
+  })();
+
+  /* =====================================================================
+     SOUND (effects + ambient bed)
+     ===================================================================== */
+  let soundOn = lsGet("yeot.sound") !== false, actx = null, amb = null;
+  function setSoundUI() { $("soundBtn").setAttribute("aria-pressed", String(soundOn)); $("soundTxt").textContent = soundOn ? "소리 켜짐" : "소리 꺼짐"; $("soundWave").style.opacity = soundOn ? "1" : "0"; }
+  setSoundUI();
+  function audio() {
+    if (!soundOn) return null;
+    try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); } catch (e) { return null; }
+    return actx;
+  }
+  function tone(type, f0, f1, dur, vol, delay) {
+    const a = audio(); if (!a) return;
+    const o = a.createOscillator(), g = a.createGain(), t = a.currentTime + (delay || 0);
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  let noiseBuf = null;
+  function noise(a) {
+    if (noiseBuf) return noiseBuf;
+    noiseBuf = a.createBuffer(1, a.sampleRate * 2, a.sampleRate);
+    const d = noiseBuf.getChannelData(0); let b = 0;
+    for (let i = 0; i < d.length; i++) { const w = Math.random() * 2 - 1; b = (b + 0.02 * w) / 1.02; d[i] = b * 3.5 + w * 0.15; }
+    return noiseBuf;
+  }
+  function burstNoise(freq, q, dur, vol) {
+    const a = audio(); if (!a) return;
+    const s = a.createBufferSource(); s.buffer = noise(a);
+    const f = a.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = freq; f.Q.value = q;
+    const g = a.createGain(), t = a.currentTime; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f).connect(g).connect(a.destination); s.start(t); s.stop(t + dur + 0.05);
+  }
+  const sfx = {
+    stick() { tone("sine", 170, 55, 0.18, 0.55); burstNoise(2200, 1.2, 0.08, 0.25); },
+    perfect() { sfx.stick(); tone("triangle", 880, 880, 0.14, 0.12, 0.09); tone("triangle", 1320, 1320, 0.26, 0.09, 0.09); tone("triangle", 1760, 1760, 0.4, 0.05, 0.2); },
+    ting() { tone("triangle", 2200, 1700, 0.4, 0.18); tone("triangle", 3300, 2600, 0.22, 0.05); },
+    thud() { tone("sine", 110, 50, 0.14, 0.35); burstNoise(500, 0.8, 0.12, 0.2); },
+    whoosh() { burstNoise(900, 0.7, 0.32, 0.18); },
+    tick() { tone("square", 1400, 1400, 0.015, 0.02); },
+    remote() { tone("sine", 220, 80, 0.14, 0.18); }
+  };
+  function stopAmbient() {
+    if (!amb) return;
+    const a = actx, t = a.currentTime; amb.g.gain.cancelScheduledValues(t); amb.g.gain.setValueAtTime(amb.g.gain.value, t); amb.g.gain.linearRampToValueAtTime(0, t + 0.6);
+    const old = amb; setTimeout(() => { try { old.src.stop(); } catch (e) {} clearInterval(old.timer); }, 700); amb = null;
+  }
+  function startAmbient() {
+    const a = audio(); if (!a) return;
+    stopAmbient();
+    const src = a.createBufferSource(); src.buffer = noise(a); src.loop = true;
+    const f = a.createBiquadFilter(), g = a.createGain(); g.gain.value = 0;
+    let vol = 0.03, timer = 0;
+    if (cur === "suneung") { f.type = "bandpass"; f.frequency.value = 420; f.Q.value = 0.5; vol = 0.05;
+      timer = setInterval(() => { if (amb && actx) amb.f.frequency.linearRampToValueAtTime(300 + Math.random() * 400, actx.currentTime + 2.5); }, 2600); }
+    else if (cur === "job") { f.type = "highpass"; f.frequency.value = 1500; vol = 0.07; }
+    else { f.type = "lowpass"; f.frequency.value = 380; vol = 0.03;
+      timer = setInterval(() => { if (!soundOn || !actx) return; for (let i = 0; i < 3; i++) tone("sine", 4300 + Math.random() * 300, 4200, 0.05, 0.012, i * 0.09); }, 1700); }
+    src.connect(f).connect(g).connect(a.destination); src.start();
+    g.gain.linearRampToValueAtTime(vol, a.currentTime + 1.6);
+    amb = { src, f, g, timer };
+  }
+  let audioPrimed = false;
+  function primeAudio() { if (audioPrimed || !soundOn) return; audioPrimed = true; startAmbient(); }
+  $("soundBtn").addEventListener("click", () => {
+    soundOn = !soundOn; lsSet("yeot.sound", soundOn); setSoundUI();
+    if (soundOn) { audioPrimed = true; startAmbient(); } else stopAmbient();
+  });
+
+  /* =====================================================================
+     RENDERER, POST-PROCESSING, ENVIRONMENT
+     ===================================================================== */
+  const cv = $("cv"), sceneEl = $("scene");
+  const hasThree = typeof THREE !== "undefined";
+  const hasPost = hasThree && THREE.EffectComposer && THREE.RenderPass && THREE.ShaderPass && THREE.UnrealBloomPass;
+  let renderer = null;
+  try { if (hasThree) renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: "high-performance" }); } catch (e) { renderer = null; }
+  if (!renderer) {
+    const d = document.createElement("div"); d.className = "nogl";
+    d.textContent = "이 기기에서는 3D 화면을 켤 수 없어요. 다른 브라우저에서 열어 주세요.";
+    sceneEl.appendChild(d);
+  }
+  const C = (h) => new THREE.Color(h).convertSRGBToLinear();
+  const G = {};          // graphics singletons
+  let quality = lsGet("yeot.gfx") || "high";
+  let scene, camera, composer = null, bloom = null, grade = null;
+  let theme = null;      // { g, update(dt,t), gate, banner }
+  let viewW = 1, viewH = 1;
+
+  const softDot = () => canvasTex(64, 64, (x, w, h) => { const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.4, "rgba(255,255,255,0.55)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); }, null, true);
+
+  function canvasTex(w, h, draw, repeat, linear) {
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    draw(c.getContext("2d"), w, h);
+    const t = new THREE.CanvasTexture(c); if (!linear) t.encoding = THREE.sRGBEncoding; t.anisotropy = G.aniso || 1;
+    if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
+    return t;
+  }
+
+  const GradeShader = {
+    uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uVig: { value: 1 }, uGrain: { value: 0.045 }, uCA: { value: 0.0022 }, uFlash: { value: 0 } },
+    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+    fragmentShader: [
+      "uniform sampler2D tDiffuse; uniform float uTime, uVig, uGrain, uCA, uFlash; varying vec2 vUv;",
+      "float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }",
+      "vec3 toSRGB(vec3 c){ c = max(c, 0.0); return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }",
+      "void main(){",
+      "  vec2 d = vUv - 0.5; float r = dot(d, d);",
+      "  vec2 off = d * uCA * (1.0 + r * 4.0);",
+      "  vec3 col = vec3(texture2D(tDiffuse, vUv + off).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - off).b);",
+      "  col += uFlash * vec3(1.0, 0.82, 0.5) * 0.45;",
+      "  col = toSRGB(col);",
+      "  col *= 1.0 - smoothstep(0.18, 0.9, r * 1.7) * 0.6 * uVig;",
+      "  col += (hash(vUv * vec2(1733.0, 977.0) + fract(uTime * 7.13)) - 0.5) * uGrain;",
+      "  gl_FragColor = vec4(col, 1.0);",
+      "}"
+    ].join("\n")
+  };
+
+  if (renderer) {
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.12;
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    G.aniso = renderer.capabilities.getMaxAnisotropy();
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(50, 0.8, 0.1, 220);
+    G.camBase = new THREE.Vector3(0, 1.85, 13.5); G.camLook = new THREE.Vector3(0, 2.05, 0);
+    G.v = [0, 1, 2, 3, 4, 5].map(() => new THREE.Vector3());
+    G.m4 = new THREE.Matrix4(); G.q = new THREE.Quaternion(); G.e = new THREE.Euler(); G.dummy = new THREE.Object3D();
+    G.scaleStuck = new THREE.Vector3(1.5, 1.5, 1.5);
+    G.zone = [C("#9ba5bd"), C("#6fcf97"), C("#e0463a"), C("#f6c567")];
+    G.colGold = [C("#f6c567"), C("#fff3d6"), C("#e0463a")]; G.colAmber = [C("#f6c567"), C("#e8a23a"), C("#fff3d6")];
+    G.dot = softDot();
+
+    // environment cube (dark night, warm lamp, cool city glow) for reflections on glass, steel, candy and wet ground.
+    // A plain cube map keeps this cheap and avoids PMREM precision problems on weaker GPUs.
+    const face = (kind) => {
+      const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d");
+      const g = x.createLinearGradient(0, 0, 0, 128);
+      if (kind === "py") { g.addColorStop(0, "#070b16"); g.addColorStop(1, "#0a1020"); }
+      else if (kind === "ny") { g.addColorStop(0, "#14120f"); g.addColorStop(1, "#0b0a09"); }
+      else { g.addColorStop(0, "#070b18"); g.addColorStop(0.55, "#1a2340"); g.addColorStop(0.62, "#2a2a38"); g.addColorStop(1, "#100e0c"); }
+      x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+      const blob = (cx, cy, r, col) => { const rg = x.createRadialGradient(cx, cy, 0, cx, cy, r); rg.addColorStop(0, col); rg.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = rg; x.fillRect(0, 0, 128, 128); };
+      if (kind === "nx" || kind === "pz") blob(kind === "nx" ? 90 : 30, 30, 34, "rgba(255,200,130,0.95)");
+      if (kind === "nz") { for (let i = 0; i < 40; i++) { x.fillStyle = "rgba(200,220,255," + (0.3 + Math.random() * 0.5).toFixed(2) + ")"; x.fillRect(Math.random() * 128, 56 + Math.random() * 18, 2, 2); } blob(64, 70, 50, "rgba(120,150,230,0.35)"); }
+      if (kind === "px") blob(64, 74, 46, "rgba(140,160,220,0.25)");
+      return c;
+    };
+    const cube = new THREE.CubeTexture(["px", "nx", "py", "ny", "pz", "nz"].map(face));
+    cube.encoding = THREE.sRGBEncoding; cube.needsUpdate = true;
+    scene.environment = cube;
+
+    // sky dome
+    G.skyMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false, fog: false,
+      uniforms: { uTop: { value: C("#060b18") }, uHor: { value: C("#1d2a4a") }, uBot: { value: C("#0b0f1a") }, uGlow: { value: C("#ff9a4a") }, uGlowAmt: { value: 0.15 } },
+      vertexShader: "varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }",
+      fragmentShader: "uniform vec3 uTop, uHor, uBot, uGlow; uniform float uGlowAmt; varying vec3 vW; void main(){ vec3 d = normalize(vW - cameraPosition); float h = d.y; vec3 c = mix(uHor, uTop, smoothstep(0.0, 0.5, h)); c = mix(uBot, c, smoothstep(-0.12, 0.02, h)); c += uGlow * uGlowAmt * pow(1.0 - clamp(abs(h), 0.0, 1.0), 9.0); gl_FragColor = vec4(c, 1.0); gl_FragColor = linearToOutputTexel(gl_FragColor); }"
+    });
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(160, 32, 16), G.skyMat); sky.renderOrder = -10; scene.add(sky);
+
+    // twinkling stars (custom shader so they shimmer)
+    G.twinkleMats = [];
+    G.stars = makeTwinkles((() => { const r = rng(11), a = []; for (let i = 0; i < 520; i++) { const th = r() * Math.PI * 2, ph = r() * 0.46 * Math.PI, R = 140; a.push([Math.cos(th) * Math.sin(ph) * R, Math.cos(ph) * R * 0.85 + 4, -Math.abs(Math.sin(th) * Math.sin(ph) * R) - 20, 1.2 + r() * 2.6]); } return a; })(), C("#fff6e6"), 1.4, 1.7);
+    scene.add(G.stars);
+
+    // moon with halo
+    const moonTex = canvasTex(256, 256, (x) => {
+      let g = x.createRadialGradient(128, 128, 0, 128, 128, 128); g.addColorStop(0, "rgba(255,246,222,0.55)"); g.addColorStop(0.18, "rgba(255,240,210,0.25)"); g.addColorStop(1, "rgba(255,240,210,0)");
+      x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+      g = x.createRadialGradient(118, 118, 4, 128, 128, 30); g.addColorStop(0, "#fffaf0"); g.addColorStop(1, "#efe2c4");
+      x.fillStyle = g; x.beginPath(); x.arc(128, 128, 28, 0, Math.PI * 2); x.fill();
+      x.fillStyle = "rgba(160,150,130,0.25)"; [[118, 120, 6], [136, 134, 4], [124, 140, 3]].forEach(([a, b, r]) => { x.beginPath(); x.arc(a, b, r, 0, Math.PI * 2); x.fill(); });
+    });
+    G.moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: moonTex, transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
+    G.moon.position.set(26, 44, -120); G.moon.scale.set(24, 24, 1); scene.add(G.moon);
+
+    // lights
+    G.hemi = new THREE.HemisphereLight(C("#44547e"), C("#16181e"), 0.7); scene.add(G.hemi);
+    G.moonLight = new THREE.DirectionalLight(C("#a9bcff"), 0.35); G.moonLight.position.set(10, 16, -4); scene.add(G.moonLight);
+    G.lamp = new THREE.SpotLight(C("#ffc27a"), 2.8, 48, 0.6, 0.65, 1.2);
+    G.lamp.position.set(-6.5, 8.8, 7); G.lamp.target.position.set(0.4, 1.0, 0);
+    G.lamp.castShadow = true; G.lamp.shadow.mapSize.set(1024, 1024); G.lamp.shadow.camera.near = 2; G.lamp.shadow.camera.far = 40; G.lamp.shadow.bias = -0.0004; G.lamp.shadow.radius = 3;
+    scene.add(G.lamp, G.lamp.target);
+    G.fill = new THREE.PointLight(C("#ffd9a8"), 0.5, 18); G.fill.position.set(1.5, 3.2, 9); scene.add(G.fill);
+    G.hitLight = new THREE.PointLight(C("#ffcf7a"), 0, 6); scene.add(G.hitLight);
+    const key = new THREE.PointLight(C("#ffe2b8"), 0.9, 7); key.position.set(1.2, 0.8, -1.5); camera.add(key); scene.add(camera);
+
+    // volumetric-looking lamp beam
+    G.beamMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide, fog: false,
+      uniforms: { uColor: { value: C("#ffcf8a") }, uStr: { value: 0.16 }, uTime: { value: 0 } },
+      vertexShader: "varying float vH; varying vec3 vN; varying vec3 vV; void main(){ vH = uv.y; vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }",
+      fragmentShader: "uniform vec3 uColor; uniform float uStr, uTime; varying float vH; varying vec3 vN; varying vec3 vV; void main(){ float edge = pow(abs(dot(vN, vV)), 1.6); float a = uStr * edge * smoothstep(0.0, 0.85, vH) * (0.92 + 0.08 * sin(uTime * 3.0 + vH * 9.0)); gl_FragColor = vec4(uColor * a, a); gl_FragColor = linearToOutputTexel(gl_FragColor); }"
+    });
+    {
+      const from = G.lamp.position, to = new THREE.Vector3(0.6, 0, 0.6), len = from.distanceTo(to);
+      const beam = new THREE.Mesh(new THREE.ConeGeometry(3.6, len, 40, 1, true), G.beamMat);
+      beam.position.copy(from).add(to).multiplyScalar(0.5);
+      beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), from.clone().sub(to).normalize());
+      beam.renderOrder = 5; scene.add(beam); G.beam = beam;
+    }
+
+    // yeot geometry + materials
+    G.yeotGeo = makeYeotGeometry();
+    const bandTex = canvasTex(512, 112, (x, w, h) => {
+      x.fillStyle = "#d63c31"; x.fillRect(0, 0, w, h); x.fillStyle = "rgba(255,255,255,0.15)"; x.fillRect(0, 8, w, 6); x.fillRect(0, h - 14, w, 6);
+      x.fillStyle = "#fff4e0"; x.font = "70px 'Black Han Sans', sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
+      x.fillText("합격", w * 0.25, h / 2 + 3); x.fillText("합격", w * 0.75, h / 2 + 3);
+    });
+    G.bandTex = bandTex;
+    G.yeotMats = [
+      new THREE.MeshPhysicalMaterial({ color: C("#e9a33a"), roughness: 0.2, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.06, emissive: C("#6a3200"), emissiveIntensity: 0.32, envMapIntensity: 1.3 }),
+      new THREE.MeshStandardMaterial({ map: bandTex, roughness: 0.45, emissive: C("#2a0604"), emissiveIntensity: 0.4 }),
+      new THREE.MeshPhysicalMaterial({ color: C("#eef3ff"), roughness: 0.05, metalness: 0, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide, clearcoat: 1, envMapIntensity: 1.6 })
+    ];
+    G.stuck = new THREE.InstancedMesh(G.yeotGeo, G.yeotMats, 260);
+    G.stuck.count = 0; G.stuck.castShadow = true; G.stuck.frustumCulled = false; scene.add(G.stuck);
+    G.thrown = new THREE.Mesh(G.yeotGeo, G.yeotMats); G.thrown.castShadow = true; scene.add(G.thrown);
+    G.remotePool = [0, 1, 2, 3].map(() => { const m = new THREE.Mesh(G.yeotGeo, G.yeotMats); m.visible = false; m.castShadow = true; scene.add(m); return m; });
+
+    // aim preview
+    const ag = new THREE.BufferGeometry(); ag.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(49 * 3), 3));
+    G.aim = new THREE.Line(ag, new THREE.LineDashedMaterial({ color: G.zone[1], dashSize: 0.2, gapSize: 0.12, transparent: true, opacity: 0.95, toneMapped: false }));
+    G.aim.visible = false; G.aim.frustumCulled = false; scene.add(G.aim);
+    G.aimRing = new THREE.Mesh(new THREE.RingGeometry(0.18, 0.26, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, toneMapped: false, depthTest: false }));
+    G.aimRing.visible = false; G.aimRing.renderOrder = 20; scene.add(G.aimRing);
+
+    // sugar sparks
+    G.sparkN = 160;
+    const pg = new THREE.BufferGeometry();
+    pg.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(G.sparkN * 3), 3));
+    pg.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(G.sparkN * 3), 3));
+    G.sparks = new THREE.Points(pg, new THREE.PointsMaterial({ size: 0.16, map: G.dot, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+    G.sparks.frustumCulled = false; scene.add(G.sparks);
+
+    // glittering flight trail
+    G.trailN = 36; G.trailPts = [];
+    const tg = new THREE.BufferGeometry();
+    tg.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(G.trailN * 3), 3));
+    tg.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(G.trailN * 3), 3));
+    G.trail = new THREE.Points(tg, new THREE.PointsMaterial({ size: 0.22, map: G.dot, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+    G.trail.frustumCulled = false; scene.add(G.trail);
+
+    // impact shockwave ring
+    G.ring = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.32, 48), new THREE.MeshBasicMaterial({ color: C("#ffd98a"), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, side: THREE.DoubleSide }));
+    G.ring.visible = false; scene.add(G.ring);
+
+  }
+
+  function setupPost() {
+    if (composer) { try { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); if (bloom && bloom.dispose) bloom.dispose(); } catch (e) { /* ignore */ } }
+    composer = null; bloom = null; grade = null;
+    if (!renderer || !hasPost || quality !== "high") return;
+    try {
+      const w = Math.max(1, viewW), h = Math.max(1, viewH), pr = renderer.getPixelRatio();
+      let rt;
+      if (renderer.capabilities.isWebGL2 && THREE.WebGLMultisampleRenderTarget) {
+        rt = new THREE.WebGLMultisampleRenderTarget(w * pr, h * pr, { format: THREE.RGBAFormat });
+        rt.samples = 4;
+      }
+      composer = new THREE.EffectComposer(renderer, rt);
+      composer.setPixelRatio(pr); composer.setSize(w, h);
+      composer.addPass(new THREE.RenderPass(scene, camera));
+      bloom = new THREE.UnrealBloomPass(new THREE.Vector2(w, h), 0.6, 0.45, 0.7);
+      composer.addPass(bloom);
+      grade = new THREE.ShaderPass(GradeShader);
+      composer.addPass(grade);
+    } catch (e) { composer = null; bloom = null; grade = null; }
+  }
+  function applyQuality(q, silent) {
+    quality = q; lsSet("yeot.gfx", q);
+    $("gfxBtn").setAttribute("aria-pressed", String(q === "high")); $("gfxTxt").textContent = q === "high" ? "그래픽 높음" : "그래픽 낮음";
+    if (!renderer) return;
+    renderer.setPixelRatio(q === "high" ? Math.min(window.devicePixelRatio || 1, 2) : Math.min(window.devicePixelRatio || 1, 1.25));
+    G.lamp.castShadow = q === "high";
+    resize(); setupPost(); if (theme) theme.setDensity(q === "high" ? 1 : 0.45);
+    if (!silent) say(q === "high" ? "그래픽을 높음으로 바꿨어요." : "그래픽을 낮음으로 바꿨어요. 더 부드럽게 움직여요.");
+  }
+  $("gfxBtn").addEventListener("click", () => { autoQ.locked = true; applyQuality(quality === "high" ? "low" : "high"); });
+
+  /* =====================================================================
+     GEOMETRY BUILDERS
+     ===================================================================== */
+  function mergeGeos(parts) {
+    const pos = [], nor = [], uv = [], idx = [], groups = []; let off = 0;
+    for (const [g, mi] of parts) {
+      const p = g.attributes.position, n = g.attributes.normal, u = g.attributes.uv;
+      const ia = g.index ? Array.from(g.index.array) : Array.from({ length: p.count }, (_, i) => i);
+      groups.push([idx.length, ia.length, mi]);
+      for (const i of ia) idx.push(i + off);
+      for (let i = 0; i < p.count; i++) { pos.push(p.getX(i), p.getY(i), p.getZ(i)); nor.push(n.getX(i), n.getY(i), n.getZ(i)); uv.push(u ? u.getX(i) : 0, u ? u.getY(i) : 0); }
+      off += p.count;
+    }
+    const out = new THREE.BufferGeometry();
+    out.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    out.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+    out.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    out.setIndex(idx);
+    for (const [s, c, m] of groups) out.addGroup(s, c, m);
+    return out;
+  }
+  function makeYeotGeometry() {
+    const body = new THREE.CylinderGeometry(0.115, 0.115, 0.84, 20, 1); body.rotateZ(Math.PI / 2); body.scale(1, 1, 0.72);
+    const capL = new THREE.SphereGeometry(0.115, 16, 10); capL.scale(0.55, 1, 0.72); capL.translate(-0.42, 0, 0);
+    const capR = capL.clone(); capR.translate(0.84, 0, 0);
+    const band = new THREE.CylinderGeometry(0.123, 0.123, 0.18, 24, 1); band.rotateZ(Math.PI / 2); band.scale(1, 1, 0.76);
+    const wl = new THREE.ConeGeometry(0.17, 0.24, 12, 2, true); wl.rotateZ(-Math.PI / 2); wl.translate(-0.58, 0, 0);
+    const wr = new THREE.ConeGeometry(0.17, 0.24, 12, 2, true); wr.rotateZ(Math.PI / 2); wr.translate(0.58, 0, 0);
+    // crinkle the cellophane a little
+    for (const w of [wl, wr]) { const p = w.attributes.position; for (let i = 0; i < p.count; i++) { const a = Math.atan2(p.getZ(i), p.getY(i)); const k = 1 + Math.sin(a * 6) * 0.12; p.setY(i, p.getY(i) * k); p.setZ(i, p.getZ(i) * k); } w.computeVertexNormals(); }
+    return mergeGeos([[body, 0], [capL, 0], [capR, 0], [band, 1], [wl, 2], [wr, 2]]);
+  }
+  function makeTwinkles(list, color, sizeK, speed) {
+    const g = new THREE.BufferGeometry(), pos = [], ph = [], sz = [];
+    const r = rng(list.length * 7 + 3);
+    for (const [x, y, z, s] of list) { pos.push(x, y, z); ph.push(r() * 6.28); sz.push(s); }
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("aPhase", new THREE.Float32BufferAttribute(ph, 1));
+    g.setAttribute("aSize", new THREE.Float32BufferAttribute(sz, 1));
+    const m = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+      uniforms: { uTime: { value: 0 }, uScale: { value: Math.max(200, viewH) * renderer.getPixelRatio() * 0.5 }, uColor: { value: color }, uK: { value: sizeK }, uSpeed: { value: speed } },
+      vertexShader: "attribute float aPhase; attribute float aSize; uniform float uTime, uScale, uK, uSpeed; varying float vA; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; vA = 0.45 + 0.55 * (0.5 + 0.5 * sin(uTime * uSpeed + aPhase)) * (0.7 + 0.3 * sin(uTime * 0.37 * uSpeed + aPhase * 3.0)); gl_PointSize = aSize * uK * uScale / max(1.0, -mv.z) * (0.75 + 0.25 * vA); }",
+      fragmentShader: "uniform vec3 uColor; varying float vA; void main(){ vec2 c = gl_PointCoord - 0.5; float d = length(c); float a = smoothstep(0.5, 0.0, d); a = a * a; gl_FragColor = vec4(uColor * 1.6 * a * vA, a * vA); gl_FragColor = linearToOutputTexel(gl_FragColor); }"
+    });
+    G.twinkleMats.push(m);
+    const p = new THREE.Points(g, m); p.frustumCulled = false; return p;
+  }
+
+  /* ---------- weather & atmosphere ---------- */
+  function makeSnow(n) {
+    const g = new THREE.BufferGeometry(), pos = new Float32Array(n * 3), vel = [], r = rng(91);
+    for (let i = 0; i < n; i++) { pos[i * 3] = (r() - 0.5) * 22; pos[i * 3 + 1] = r() * 12; pos[i * 3 + 2] = -6 + r() * 19; vel.push([0.25 + r() * 0.45, r() * 6.28, 0.3 + r() * 0.6]); }
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.075, map: G.dot, transparent: true, depthWrite: false, color: C("#ffffff"), opacity: 0.95, fog: true }));
+    pts.frustumCulled = false;
+    return { obj: pts, n, update(dt, t) {
+      const p = g.attributes.position;
+      for (let i = 0; i < g.drawRange.count && i < n; i++) {
+        const v = vel[i]; let y = p.getY(i) - v[0] * dt; let x = p.getX(i) + Math.sin(t * v[2] + v[1]) * 0.25 * dt;
+        if (y < 0) { y = 12; x = (Math.random() - 0.5) * 22; }
+        p.setX(i, x); p.setY(i, y);
+      }
+      p.needsUpdate = true;
+    } };
+  }
+  function makeRain(n) {
+    const g = new THREE.BufferGeometry(), pos = new Float32Array(n * 6), r = rng(77), sp = [];
+    for (let i = 0; i < n; i++) { const x = (r() - 0.5) * 24, y = r() * 14, z = -6 + r() * 20; pos.set([x, y, z, x - 0.04, y + 0.42, z], i * 6); sp.push(11 + r() * 5); }
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const lines = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: C("#a9c0e8"), transparent: true, opacity: 0.32, depthWrite: false }));
+    lines.frustumCulled = false;
+    // splash ripples on the wet ground
+    const rippleN = 40, rg = new THREE.BufferGeometry(), rp = new Float32Array(rippleN * 3), rl = new Float32Array(rippleN);
+    for (let i = 0; i < rippleN; i++) { rp.set([(Math.random() - 0.5) * 12, 0.02, Math.random() * 10 - 1], i * 3); rl[i] = Math.random(); }
+    rg.setAttribute("position", new THREE.BufferAttribute(rp, 3));
+    const ripples = new THREE.Points(rg, new THREE.PointsMaterial({ size: 0.12, map: G.dot, transparent: true, depthWrite: false, color: C("#cfe0ff"), opacity: 0.45, blending: THREE.AdditiveBlending }));
+    ripples.frustumCulled = false;
+    const grp = new THREE.Group(); grp.add(lines, ripples);
+    return { obj: grp, n, update(dt) {
+      const p = g.attributes.position;
+      const count = Math.min(n, g.drawRange.count / 2 | 0 || n);
+      for (let i = 0; i < count; i++) {
+        let y = p.getY(i * 2) - sp[i] * dt, x = p.getX(i * 2) - sp[i] * dt * 0.09;
+        if (y < 0) { y = 14; x = (Math.random() - 0.5) * 24; }
+        const z = p.getZ(i * 2);
+        p.setXYZ(i * 2, x, y, z); p.setXYZ(i * 2 + 1, x + 0.04, y + 0.42, z);
+      }
+      p.needsUpdate = true;
+      for (let i = 0; i < rippleN; i++) { rl[i] -= dt * 2.2; if (rl[i] < 0) { rl[i] = 1; rp[i * 3] = (Math.random() - 0.5) * 12; rp[i * 3 + 2] = Math.random() * 10 - 1; } }
+      ripples.material.size = 0.12; rg.attributes.position.needsUpdate = true;
+    } };
+  }
+  function leafTexture(kind) {
+    return canvasTex(128, 128, (x, w, h) => {
+      x.clearRect(0, 0, w, h); x.translate(64, 64);
+      if (kind === "ginkgo") {
+        const g = x.createLinearGradient(0, -50, 0, 40); g.addColorStop(0, "#ffd84a"); g.addColorStop(1, "#d79a12");
+        x.fillStyle = g; x.beginPath(); x.moveTo(0, 30);
+        x.bezierCurveTo(-48, -2, -56, -40, -40, -50); x.quadraticCurveTo(-20, -40, -4, -52); x.lineTo(0, -38); x.lineTo(4, -52);
+        x.quadraticCurveTo(20, -40, 40, -50); x.bezierCurveTo(56, -40, 48, -2, 0, 30); x.fill();
+        x.strokeStyle = "rgba(150,100,10,0.5)"; x.lineWidth = 1.5; for (let a = -0.8; a <= 0.8; a += 0.2) { x.beginPath(); x.moveTo(0, 28); x.lineTo(Math.sin(a) * 46, 28 - Math.cos(a) * 70); x.stroke(); }
+        x.strokeStyle = "#b07a10"; x.lineWidth = 3; x.beginPath(); x.moveTo(0, 30); x.lineTo(0, 60); x.stroke();
+      } else {
+        const cols = ["#c8501e", "#a83a1a", "#d9822b", "#8a5a2a"]; x.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+        x.beginPath();
+        for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rad = i % 2 ? 22 : 54; x.lineTo(Math.cos(a) * rad, Math.sin(a) * rad); }
+        x.closePath(); x.fill();
+        x.strokeStyle = "rgba(60,20,0,0.5)"; x.lineWidth = 2; x.beginPath(); x.moveTo(0, 40); x.lineTo(0, -40); x.stroke();
+      }
+    });
+  }
+  function makeLeaves(n, tex, area) {
+    const mat = new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.7, emissive: C("#3a2400"), emissiveIntensity: 0.25 });
+    const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.26, 0.26), mat, n);
+    mesh.castShadow = true; mesh.frustumCulled = false;
+    const r = rng(n * 13), st = [];
+    for (let i = 0; i < n; i++) st.push({ x: (r() - 0.5) * area[0], y: r() * area[1], z: area[2] + r() * area[3], vy: 0.35 + r() * 0.5, ph: r() * 6.28, sp: 0.6 + r() * 1.4, rx: r() * 6, ry: r() * 6, rz: r() * 6 });
+    return { obj: mesh, n, update(dt, t) {
+      const d = G.dummy, count = mesh.count;
+      for (let i = 0; i < count; i++) {
+        const s = st[i]; s.y -= s.vy * dt; s.x += Math.sin(t * s.sp + s.ph) * 0.6 * dt + 0.08 * dt;
+        s.rx += dt * s.sp * 1.7; s.ry += dt * s.sp; s.rz += dt * 0.6;
+        if (s.y < 0.02) { s.y = area[1]; s.x = (Math.random() - 0.5) * area[0]; }
+        d.position.set(s.x, s.y, s.z); d.rotation.set(s.rx, s.ry, s.rz); d.scale.setScalar(1); d.updateMatrix(); mesh.setMatrixAt(i, d.matrix);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+    } };
+  }
+  function groundLeaves(n, tex, seed) {
+    const mat = new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.85, emissive: C("#2a1a00"), emissiveIntensity: 0.2 });
+    const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.28, 0.28), mat, n);
+    mesh.receiveShadow = true;
+    const r = rng(seed), d = G.dummy;
+    for (let i = 0; i < n; i++) {
+      // denser along the gate foot and the curbs
+      const nearGate = r() < 0.45;
+      const x = nearGate ? (r() - 0.5) * 9 : (r() - 0.5) * 18;
+      const z = nearGate ? 0.3 + r() * 1.6 : -0.5 + r() * 11;
+      d.position.set(x, 0.012 + r() * 0.01, z); d.rotation.set(-Math.PI / 2 + (r() - 0.5) * 0.3, 0, r() * 6.28); d.scale.setScalar(0.8 + r() * 0.5); d.updateMatrix(); mesh.setMatrixAt(i, d.matrix);
+    }
+    return mesh;
+  }
+  function makeMotes(n, color) {
+    const g = new THREE.BufferGeometry(), pos = new Float32Array(n * 3), r = rng(55), ph = [];
+    for (let i = 0; i < n; i++) { pos.set([(r() - 0.5) * 10 - 1.5, 0.3 + r() * 6, -1 + r() * 9], i * 3); ph.push([r() * 6.28, 0.2 + r() * 0.5]); }
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.06, map: G.dot, transparent: true, depthWrite: false, color, opacity: 0.85, blending: THREE.AdditiveBlending, toneMapped: false }));
+    pts.frustumCulled = false;
+    return { obj: pts, n, update(dt, t) {
+      const p = g.attributes.position;
+      for (let i = 0; i < n; i++) { const [a, s] = ph[i]; p.setX(i, p.getX(i) + Math.sin(t * s + a) * 0.08 * dt); p.setY(i, p.getY(i) + Math.cos(t * s * 0.8 + a) * 0.06 * dt); }
+      p.needsUpdate = true;
+    } };
+  }
+  function makeMist(color, opacity) {
+    const tex = canvasTex(512, 128, (x, w, h) => {
+      x.clearRect(0, 0, w, h); const r = rng(5);
+      for (let i = 0; i < 60; i++) { const cx = r() * w, cy = h * (0.45 + r() * 0.35), rad = 30 + r() * 70; const g = x.createRadialGradient(cx, cy, 0, cx, cy, rad); g.addColorStop(0, "rgba(255,255,255,0.22)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.fillRect(cx - rad, cy - rad, rad * 2, rad * 2); }
+      // repeat seam
+      const img = x.getImageData(0, 0, 40, h); x.putImageData(img, w - 40, 0);
+    });
+    tex.wrapS = THREE.RepeatWrapping;
+    const grp = new THREE.Group(), layers = [];
+    for (let i = 0; i < 4; i++) {
+      const t2 = tex.clone(); t2.needsUpdate = true; t2.wrapS = THREE.RepeatWrapping; t2.repeat.set(1.6, 1);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(30, 2.6), new THREE.MeshBasicMaterial({ map: t2, color, transparent: true, opacity: opacity * (1 - i * 0.12), depthWrite: false, fog: false }));
+      m.position.set(0, 0.7 + i * 0.12, -2 + i * 3.2); grp.add(m); layers.push([m, 0.008 + i * 0.006 * (i % 2 ? -1 : 1)]);
+    }
+    return { obj: grp, update(dt) { for (const [m, s] of layers) m.material.map.offset.x += s * dt; } };
+  }
+
+  /* ---------- theme building blocks ---------- */
+  function std(o) { return new THREE.MeshStandardMaterial(o); }
+  function mesh(geo, mat, x, y, z, cast) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); if (cast) m.castShadow = true; return m; }
+  function box(w, h, d, mat, x, y, z, cast) { return mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z, cast); }
+  function textPlane(w, h, pw, ph, draw, opts) {
+    const tex = canvasTex(pw, ph, draw);
+    const mat = opts && opts.basic ? new THREE.MeshBasicMaterial({ map: tex, transparent: !!opts.transparent, toneMapped: false, depthWrite: !opts.transparent })
+      : std(Object.assign({ map: tex, roughness: 0.75 }, opts || {}));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); m.userData.tex = tex; return m;
+  }
+  function windowsTex(cols, rows, lit, seed, wall, litCols, darkCol, pw, ph, opts) {
+    const r = rng(seed), pad = 0.18, cells = [];
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) cells.push([i, j, r() < lit, r(), r()]);
+    const paint = (x, w, h, emi) => {
+      x.fillStyle = emi ? "#000" : wall; x.fillRect(0, 0, w, h);
+      const cw = w / cols, ch = h / rows;
+      for (const [i, j, on, k, k2] of cells) {
+        if (emi && !on) continue;
+        const col = on ? litCols[Math.floor(k * litCols.length)] : darkCol;
+        x.fillStyle = col; const wx = i * cw + cw * pad, wy = j * ch + ch * pad, ww = cw * (1 - pad * 2), wh = ch * (1 - pad * 1.6);
+        x.fillRect(wx, wy, ww, wh);
+        if (on && !emi && opts && opts.blinds && k2 < 0.5) { x.fillStyle = "rgba(0,0,0,0.25)"; for (let b = 0; b < wh; b += 4) x.fillRect(wx, wy + b, ww, 1.5); }
+        if (on && !emi && opts && opts.people && k2 > 0.82) { x.fillStyle = "rgba(20,20,30,0.55)"; x.beginPath(); x.arc(wx + ww * 0.5, wy + wh * 0.62, ww * 0.16, 0, 7); x.fill(); x.fillRect(wx + ww * 0.32, wy + wh * 0.74, ww * 0.36, wh * 0.26); }
+        if (opts && opts.frame && !emi) { x.fillStyle = opts.frame; x.fillRect(wx + ww * 0.5 - 1, wy, 2, wh); }
+      }
+    };
+    return { map: canvasTex(pw, ph, (x, w, h) => paint(x, w, h, false)), emi: canvasTex(pw, ph, (x, w, h) => paint(x, w, h, true)) };
+  }
+  function building(w, h, d, x, y, z, win, wallHex, emi) {
+    const wall = std({ color: C(wallHex), roughness: 0.9 });
+    const front = std({ map: win.map, emissiveMap: win.emi, emissive: C("#ffffff"), emissiveIntensity: emi == null ? 1.1 : emi, roughness: 0.6, metalness: 0.1 });
+    return mesh(new THREE.BoxGeometry(w, h, d), [wall, wall, wall, wall, front, wall], x, y, z);
+  }
+  function vertText(text, bg, fg, border, font) {
+    return (x, w, h) => {
+      x.fillStyle = bg; x.fillRect(0, 0, w, h);
+      if (border) { x.strokeStyle = border; x.lineWidth = 8; x.strokeRect(14, 14, w - 28, h - 28); }
+      x.fillStyle = fg; x.font = font; x.textAlign = "center"; x.textBaseline = "middle";
+      const chars = text.split(""), step = (h - 80) / chars.length;
+      chars.forEach((ch, i) => x.fillText(ch, w / 2, 40 + step * (i + 0.5)));
+    };
+  }
+  function makeBanner(text, bg, fg, y) {
+    const grp = new THREE.Group();
+    const tex = canvasTex(1100, 120, (x, w, h) => {
+      x.fillStyle = bg; x.fillRect(0, 0, w, h);
+      x.fillStyle = "rgba(255,255,255,0.10)"; x.fillRect(0, 0, w, 8); x.fillStyle = "rgba(0,0,0,0.18)"; x.fillRect(0, h - 8, w, 8);
+      for (const cx of [26, w - 26]) { x.fillStyle = "rgba(255,255,255,0.7)"; x.beginPath(); x.arc(cx, 18, 6, 0, 7); x.fill(); }
+      x.fillStyle = fg; x.font = "70px 'Black Han Sans', sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(text, w / 2, h / 2 + 4);
+    });
+    const geo = new THREE.PlaneGeometry(6.6, 0.72, 48, 4);
+    const base = geo.attributes.position.array.slice();
+    const m = new THREE.Mesh(geo, std({ map: tex, side: THREE.DoubleSide, roughness: 0.85, emissive: C("#ffffff"), emissiveMap: tex, emissiveIntensity: 0.12 }));
+    m.position.set(0, y, 0.35); m.castShadow = true; grp.add(m);
+    const rope = new THREE.LineBasicMaterial({ color: C("#cfc6b2"), transparent: true, opacity: 0.5 });
+    for (const s of [-1, 1]) grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(s * 4.55, y - 0.25, 0.2), new THREE.Vector3(s * 3.3, y + 0.32, 0.35)]), rope));
+    let acc = 0;
+    return { obj: grp, update(dt, t) {
+      acc += dt; if (acc < 1 / 40) return; acc = 0;
+      const p = geo.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        const bx = base[i * 3], by = base[i * 3 + 1], edge = 1 - Math.pow(Math.abs(bx) / 3.3, 2) * 0.6;
+        p.setZ(i, Math.sin(bx * 1.25 + t * 2.1) * 0.07 * edge + Math.sin(bx * 3.1 + t * 3.3 + by * 2) * 0.02 + (by + 0.36) * Math.sin(t * 1.4) * 0.03);
+      }
+      p.needsUpdate = true; geo.computeVertexNormals();
+    } };
+  }
+  function stonePillars(g, tex, capHex, lamps) {
+    const mat = std({ map: tex, roughness: 0.85 }), cap = std({ color: C(capHex), roughness: 0.7 });
+    for (const s of [-1, 1]) {
+      const p = box(0.9, 4.4, 0.9, mat, s * 4.55, 2.2, 0, true); p.receiveShadow = true; g.add(p);
+      g.add(box(1.12, 0.22, 1.12, cap, s * 4.55, 4.5, 0, true));
+      g.add(box(1.0, 0.12, 1.0, cap, s * 4.55, 4.66, 0));
+      if (lamps) {
+        const globe = mesh(new THREE.SphereGeometry(0.2, 20, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.4, 1.4), toneMapped: false }), s * 4.55, 4.98, 0);
+        g.add(globe); g.add(box(0.12, 0.18, 0.12, cap, s * 4.55, 4.8, 0));
+        const pl = new THREE.PointLight(C("#ffcf8a"), 0.7, 5.5); pl.position.set(s * 4.55, 4.95, 0.3); g.add(pl);
+      }
+    }
+  }
+  function blocksTex(base, line, seed) {
+    return canvasTex(256, 512, (x, w, h) => {
+      x.fillStyle = base; x.fillRect(0, 0, w, h);
+      const r = rng(seed);
+      for (let i = 0; i < 1800; i++) { x.fillStyle = "rgba(" + (r() < 0.5 ? "255,255,255" : "0,0,0") + "," + (r() * 0.09).toFixed(3) + ")"; x.fillRect(r() * w, r() * h, 3, 3); }
+      x.strokeStyle = line; x.lineWidth = 3;
+      for (let y = 0, k = 0; y < h; y += 64, k++) { x.beginPath(); x.moveTo(0, y); x.lineTo(w, y); x.stroke(); const o = k % 2 ? 64 : 0; for (let xx = o; xx < w; xx += 128) { x.beginPath(); x.moveTo(xx, y); x.lineTo(xx, y + 64); x.stroke(); } }
+    });
+  }
+  function brickTex() {
+    return canvasTex(256, 512, (x, w, h) => {
+      x.fillStyle = "#3a221c"; x.fillRect(0, 0, w, h);
+      const r = rng(5), bw = 64, bh = 26;
+      for (let y = 0, k = 0; y < h; y += bh, k++) for (let xx = (k % 2 ? -bw / 2 : 0); xx < w; xx += bw) {
+        const v = 0.72 + r() * 0.38; x.fillStyle = "rgb(" + Math.round(150 * v) + "," + Math.round(70 * v) + "," + Math.round(52 * v) + ")";
+        x.fillRect(xx + 2, y + 2, bw - 4, bh - 4);
+      }
+    });
+  }
+  function groundMat(kind) {
+    const r = rng(kind.length * 31);
+    const map = canvasTex(1024, 1024, (x, w, h) => {
+      if (kind === "asphalt") {
+        x.fillStyle = "#30333b"; x.fillRect(0, 0, w, h);
+        for (let i = 0; i < 26000; i++) { const v = r(); x.fillStyle = v < 0.5 ? "rgba(255,255,255," + (r() * 0.07).toFixed(3) + ")" : "rgba(0,0,0," + (r() * 0.12).toFixed(3) + ")"; x.fillRect(r() * w, r() * h, 2, 2); }
+        x.strokeStyle = "rgba(0,0,0,0.35)"; x.lineWidth = 2;
+        for (let i = 0; i < 9; i++) { x.beginPath(); let px = r() * w, py = r() * h; x.moveTo(px, py); for (let k = 0; k < 8; k++) { px += (r() - 0.5) * 70; py += (r() - 0.5) * 70; x.lineTo(px, py); } x.stroke(); }
+      } else if (kind === "plaza") {
+        x.fillStyle = "#4b5263"; x.fillRect(0, 0, w, h);
+        const t = 128;
+        for (let yy = 0; yy < h; yy += t) for (let xx = 0; xx < w; xx += t) { const v = 0.88 + r() * 0.2; x.fillStyle = "rgb(" + Math.round(75 * v) + "," + Math.round(82 * v) + "," + Math.round(99 * v) + ")"; x.fillRect(xx + 2, yy + 2, t - 4, t - 4); }
+        for (let i = 0; i < 14000; i++) { x.fillStyle = "rgba(255,255,255," + (r() * 0.08).toFixed(3) + ")"; x.fillRect(r() * w, r() * h, 1.5, 1.5); }
+      } else {
+        x.fillStyle = "#585d60"; x.fillRect(0, 0, w, h);
+        for (let i = 0; i < 20000; i++) { x.fillStyle = (r() < 0.5 ? "rgba(255,255,255," : "rgba(0,0,0,") + (r() * 0.07).toFixed(3) + ")"; x.fillRect(r() * w, r() * h, 2, 2); }
+        x.strokeStyle = "rgba(0,0,0,0.4)"; x.lineWidth = 3; for (let i = 0; i <= 4; i++) { x.beginPath(); x.moveTo(0, i * 256); x.lineTo(w, i * 256); x.stroke(); x.beginPath(); x.moveTo(i * 256, 0); x.lineTo(i * 256, h); x.stroke(); }
+        for (let i = 0; i < 8; i++) { x.fillStyle = "rgba(0,0,0,0.12)"; x.beginPath(); x.arc(r() * w, r() * h, 30 + r() * 80, 0, 7); x.fill(); }
+      }
+    }, [10, 10]);
+    const rough = canvasTex(512, 512, (x, w, h) => {
+      const baseR = kind === "plaza" ? 150 : kind === "asphalt" ? 215 : 230;
+      x.fillStyle = "rgb(" + baseR + "," + baseR + "," + baseR + ")"; x.fillRect(0, 0, w, h);
+      const n = kind === "plaza" ? 22 : kind === "asphalt" ? 8 : 3;
+      for (let i = 0; i < n; i++) { const cx = r() * w, cy = r() * h, rad = 20 + r() * 70; const g = x.createRadialGradient(cx, cy, 0, cx, cy, rad); g.addColorStop(0, "rgb(15,15,15)"); g.addColorStop(0.7, "rgb(40,40,40)"); g.addColorStop(1, "rgba(" + baseR + "," + baseR + "," + baseR + ",0)"); x.fillStyle = g; x.fillRect(cx - rad, cy - rad, rad * 2, rad * 2); }
+    }, [10, 10], true);
+    return new THREE.MeshStandardMaterial({ map, roughnessMap: rough, roughness: 1, metalness: kind === "plaza" ? 0.15 : 0.02, envMapIntensity: kind === "plaza" ? 1.6 : 0.7 });
+  }
+  function addGround(g, kind) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), groundMat(kind));
+    m.rotation.x = -Math.PI / 2; m.receiveShadow = true; g.add(m);
+    // curb + sidewalk edge in front of the gate
+    const curb = box(30, 0.14, 0.4, std({ color: C(kind === "plaza" ? "#6d7382" : "#7a7c80"), roughness: 0.8 }), 0, 0.07, 1.25);
+    curb.receiveShadow = true; g.add(curb);
+  }
+  function treeGinkgo(g, x, z, s) {
+    const bark = std({ color: C("#3b2a20"), roughness: 0.95 });
+    const tr = mesh(new THREE.CylinderGeometry(0.12 * s, 0.2 * s, 2.6 * s, 10), bark, x, 1.3 * s, z, true); g.add(tr);
+    const leaf = std({ color: C("#f2c230"), roughness: 0.75, emissive: C("#5a3c00"), emissiveIntensity: 0.4, flatShading: true });
+    const r = rng(hashStr("t" + x + z));
+    for (let i = 0; i < 7; i++) {
+      const b = mesh(new THREE.IcosahedronGeometry((0.55 + r() * 0.45) * s, 1), leaf, x + (r() - 0.5) * 1.3 * s, (2.6 + r() * 1.7) * s, z + (r() - 0.5) * 1.0 * s, true);
+      b.scale.y = 1.15; g.add(b);
+    }
+  }
+  function treePine(g, x, z, s) {
+    const bark = std({ color: C("#3a2a22"), roughness: 0.95 });
+    g.add(mesh(new THREE.CylinderGeometry(0.1 * s, 0.16 * s, 1.4 * s, 8), bark, x, 0.7 * s, z, true));
+    const nd = std({ color: C("#1f4a34"), roughness: 0.85, flatShading: true });
+    for (let i = 0; i < 4; i++) g.add(mesh(new THREE.ConeGeometry((1.2 - i * 0.24) * s, 1.3 * s, 9), nd, x, (1.4 + i * 0.75) * s, z, true));
+  }
+  function treeLit(g, x, z, s, twinkleList) {
+    const bark = std({ color: C("#2a2622"), roughness: 0.9 });
+    g.add(mesh(new THREE.CylinderGeometry(0.08 * s, 0.13 * s, 1.6 * s, 8), bark, x, 0.8 * s, z, true));
+    const crown = mesh(new THREE.SphereGeometry(0.95 * s, 18, 12), std({ color: C("#22382c"), roughness: 0.9, flatShading: true }), x, 2.3 * s, z, true);
+    crown.scale.set(1, 1.2, 1); g.add(crown);
+    g.add(box(1.2 * s, 0.5 * s, 1.2 * s, std({ color: C("#2c3140"), roughness: 0.5, metalness: 0.3 }), x, 0.25 * s, z, true));
+    const r = rng(hashStr("lit" + x));
+    for (let i = 0; i < 70; i++) { const a = r() * Math.PI * 2, h = (r() - 0.5) * 2.1 * s, rad = 0.98 * s * Math.sqrt(1 - Math.pow(h / (1.2 * s), 2) * 0.7); twinkleList.push([x + Math.cos(a) * rad, 2.3 * s + h, z + Math.sin(a) * rad, 0.5 + r() * 0.4]); }
+  }
+
+  /* ---------- the three worlds ---------- */
+  function buildSuneung(T) {
+    const g = T.g;
+    G.skyMat.uniforms.uTop.value = C("#050a17"); G.skyMat.uniforms.uHor.value = C("#1e2b4c"); G.skyMat.uniforms.uBot.value = C("#0a0e18"); G.skyMat.uniforms.uGlowAmt.value = 0.10;
+    scene.fog = new THREE.Fog(C("#121a30"), 26, 90); G.moon.visible = true; G.hemi.intensity = 0.7;
+    addGround(g, "asphalt");
+    // zebra crosswalk in front of the school
+    const zebra = textPlane(8.4, 2.6, 1024, 320, (x, w, h) => {
+      x.clearRect(0, 0, w, h); const r = rng(8);
+      for (let i = 0; i < 9; i++) { x.fillStyle = "rgba(235,235,230,0.88)"; x.fillRect(20 + i * 112, 0, 62, h); }
+      x.globalCompositeOperation = "destination-out"; for (let i = 0; i < 900; i++) { x.fillStyle = "rgba(0,0,0," + (r() * 0.6).toFixed(2) + ")"; x.fillRect(r() * w, r() * h, 3 + r() * 6, 2 + r() * 4); }
+    }, { transparent: true, roughness: 0.55, depthWrite: false });
+    zebra.rotation.x = -Math.PI / 2; zebra.position.set(0, 0.008, 4.4); zebra.receiveShadow = true; g.add(zebra);
+
+    const win = windowsTex(14, 4, 0.48, 19, "#1b2440", ["#ffd38a", "#ffe2a8", "#f7c675", "#fff0c8"], "#2b3656", 1024, 320, { frame: "rgba(0,0,0,0.35)", people: true });
+    g.add(building(18, 6.5, 2.6, 0, 3.25, -8, win, "#1b2440", 1.25));
+    g.add(box(18.4, 0.3, 2.9, std({ color: C("#141b31") }), 0, 6.6, -8));
+    g.add(box(1.9, 1.8, 0.3, std({ color: C("#141b31") }), 0, 7.45, -6.9));
+    const face = textPlane(1.3, 1.3, 256, 256, (x) => {
+      x.fillStyle = "#141b31"; x.fillRect(0, 0, 256, 256); x.fillStyle = "#f4ead5"; x.beginPath(); x.arc(128, 128, 108, 0, 7); x.fill();
+      x.fillStyle = "#2a2420"; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; x.fillRect(128 + Math.sin(a) * 92 - 3, 128 - Math.cos(a) * 92 - 8, 6, 16); }
+    }, { emissive: C("#fff0d0"), emissiveIntensity: 0.35 });
+    face.position.set(0, 7.45, -6.74); g.add(face);
+    const handMat = new THREE.MeshBasicMaterial({ color: C("#2a2420") });
+    const hourH = new THREE.Group(), minH = new THREE.Group();
+    hourH.add(box(0.05, 0.32, 0.01, handMat, 0, 0.14, 0)); minH.add(box(0.035, 0.48, 0.01, handMat, 0, 0.22, 0));
+    hourH.position.set(0, 7.45, -6.73); minH.position.set(0, 7.45, -6.725); g.add(hourH, minH);
+    T.extra.push(() => { const o = seoulParts(); minH.rotation.z = -(o.minute + o.second / 60) / 60 * Math.PI * 2; hourH.rotation.z = -((o.hour % 12) + o.minute / 60) / 12 * Math.PI * 2; });
+
+    treeGinkgo(g, -2.7, -3.4, 1); treeGinkgo(g, 2.9, -3.8, 1.1); treeGinkgo(g, -6.6, -4.6, 1.2); treeGinkgo(g, 6.8, -4.4, 1.15);
+    stonePillars(g, blocksTex("#8d939c", "rgba(0,0,0,0.22)", 7), "#5c616a", true);
+    const plate = textPlane(0.56, 2.9, 128, 660, vertText("합격고등학교", "#f4ead5", "#2a2420", "#3a3128", "82px 'Black Han Sans', sans-serif"), { emissive: C("#fff4dc"), emissiveIntensity: 0.12 });
+    plate.position.set(4.55, 2.3, 0.46); g.add(plate);
+
+    const gate = new THREE.Group(); T.gate = gate; g.add(gate);
+    const iron = std({ color: C("#2f3e44"), metalness: 0.75, roughness: 0.38 });
+    const barGeo = new THREE.CylinderGeometry(0.035, 0.035, 3.2, 10), tipGeo = new THREE.ConeGeometry(0.075, 0.22, 10);
+    const bars = new THREE.InstancedMesh(barGeo, iron, 24), tips = new THREE.InstancedMesh(tipGeo, std({ color: C("#b08a3c"), metalness: 0.9, roughness: 0.3 }), 24);
+    let k = 0; for (let x = -3.92; x <= 3.93; x += 0.35) { G.dummy.position.set(x, 1.73, 0); G.dummy.rotation.set(0, 0, 0); G.dummy.scale.setScalar(1); G.dummy.updateMatrix(); bars.setMatrixAt(k, G.dummy.matrix); G.dummy.position.y = 3.44; G.dummy.updateMatrix(); tips.setMatrixAt(k, G.dummy.matrix); k++; }
+    bars.count = tips.count = k; bars.castShadow = true; gate.add(bars, tips);
+    for (const [y, h] of [[0.22, 0.14], [1.72, 0.1], [3.24, 0.12]]) gate.add(box(8.2, h, 0.1, iron, 0, y, 0, true));
+    const arc = new THREE.TorusGeometry(0.32, 0.025, 8, 24, Math.PI);
+    for (let x = -3.15; x <= 3.2; x += 1.05) gate.add(mesh(arc, iron, x, 1.77, 0));
+    gate.add(box(0.09, 3.2, 0.14, iron, 0, 1.73, 0));
+    const banner = makeBanner("선배님들 수능 대박 기원!", "#c8352c", "#f4ead5", 5.35); g.add(banner.obj); T.anim.push(banner);
+
+    const ginkgo = leafTexture("ginkgo");
+    g.add(groundLeaves(220, ginkgo, 21));
+    T.addWeather(makeLeaves(70, ginkgo, [16, 8, -3, 12]));
+    T.addWeather(makeSnow(900));
+    T.addWeather(makeMist(C("#9fb2d8"), 0.11));
+  }
+
+  function buildJob(T) {
+    const g = T.g;
+    G.skyMat.uniforms.uTop.value = C("#070b22"); G.skyMat.uniforms.uHor.value = C("#2a2d58"); G.skyMat.uniforms.uBot.value = C("#0b0d1c"); G.skyMat.uniforms.uGlowAmt.value = 0.35;
+    scene.fog = new THREE.Fog(C("#1b1f3e"), 24, 95); G.moon.visible = false; G.hemi.intensity = 0.62;
+    addGround(g, "plaza");
+    const lit = ["#cfe4ff", "#e8f1ff", "#ffe9b8", "#a9cbff", "#ffffff"];
+    g.add(building(8.5, 30, 5, 0, 15, -14, windowsTex(12, 34, 0.62, 31, "#121a36", lit, "#1d2747", 512, 1200, { blinds: true, people: true }), "#121a36", 1.3));
+    g.add(building(6, 18, 4, -10, 9, -17, windowsTex(9, 20, 0.45, 32, "#10172e", lit, "#1b2443", 256, 600, { blinds: true }), "#10172e", 1.1));
+    g.add(building(6, 24, 4, 10.4, 12, -18, windowsTex(9, 26, 0.5, 33, "#10172e", lit, "#1b2443", 256, 700, { blinds: true }), "#10172e", 1.1));
+    g.add(building(5, 12, 4, -16, 6, -22, windowsTex(7, 14, 0.4, 34, "#0e152a", lit, "#18203c", 256, 400), "#0e152a", 1));
+    const beacon = mesh(new THREE.SphereGeometry(0.2, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 0.3, 0.2), toneMapped: false }), 0, 30.3, -14); g.add(beacon);
+    const beacon2 = beacon.clone(); beacon2.position.set(10.4, 24.3, -18); g.add(beacon2);
+    T.anim.push({ update(dt, t) { const on = Math.sin(t * 3.2) > 0.55; beacon.visible = on; beacon2.visible = Math.sin(t * 3.2 + 1.7) > 0.55; } });
+
+    const lights = [];
+    treeLit(g, -2.8, -3.0, 1, lights); treeLit(g, 2.8, -3.0, 1, lights); treeLit(g, -6.4, -4.2, 1.1, lights); treeLit(g, 6.4, -4.2, 1.1, lights);
+    const tw = makeTwinkles(lights, C("#ffd59a"), 0.9, 3.2); g.add(tw);
+
+    const granite = std({ color: C("#23272f"), roughness: 0.22, metalness: 0.35, envMapIntensity: 1.4 });
+    for (const s of [-1, 1]) { const p = box(0.9, 4.6, 0.9, granite, s * 4.55, 2.3, 0, true); p.receiveShadow = true; g.add(p); }
+    g.add(box(10.2, 0.85, 0.7, granite, 0, 5.0, 0, true));
+    const sign = textPlane(6.4, 0.6, 1100, 104, (x, w, h) => {
+      x.clearRect(0, 0, w, h); x.fillStyle = "#ffffff"; x.font = "84px 'Black Han Sans', sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
+      x.shadowColor = "rgba(160,200,255,0.9)"; x.shadowBlur = 18; x.fillText("합격주식회사", w / 2, h / 2 + 4);
+    }, { basic: true, transparent: true });
+    sign.material.color = new THREE.Color(1.6, 1.7, 2.0); sign.position.set(0.3, 5.0, 0.36); g.add(sign);
+    g.add(mesh(new THREE.CircleGeometry(0.22, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.9, 1.6, 3.0), toneMapped: false }), -2.55, 5.0, 0.36));
+    // scrolling LED ticker under the sign
+    const tickTex = canvasTex(2048, 64, (x, w, h) => {
+      x.fillStyle = "#0a0703"; x.fillRect(0, 0, w, h);
+      x.fillStyle = "#ffb347"; x.font = "44px 'Black Han Sans', sans-serif"; x.textBaseline = "middle";
+      x.fillText("◆ 2026 하반기 신입사원 공개채용  ◆ 서류 전형 결과 발표  ◆ 최종 면접 대기실은 3층입니다  ◆ 모든 지원자를 응원합니다  ", 10, h / 2 + 2);
+      x.globalCompositeOperation = "destination-in"; for (let yy = 0; yy < h; yy += 4) for (let xx = 0; xx < w; xx += 4) x.fillRect(xx, yy, 3, 3);
+    });
+    tickTex.wrapS = THREE.RepeatWrapping; tickTex.repeat.set(0.38, 1);
+    const tick = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 0.24), new THREE.MeshBasicMaterial({ map: tickTex, color: new THREE.Color(2.2, 2.2, 2.2), toneMapped: false }));
+    tick.position.set(0, 4.36, 0.36); g.add(tick); g.add(box(7.6, 0.32, 0.1, granite, 0, 4.36, 0.3));
+    T.anim.push({ update(dt) { tickTex.offset.x = (tickTex.offset.x + dt * 0.045) % 1; } });
+
+    const gate = new THREE.Group(); T.gate = gate; g.add(gate);
+    const steel = std({ color: C("#a6afbd"), metalness: 0.92, roughness: 0.18, envMapIntensity: 1.5 });
+    for (const [y, h] of [[0.2, 0.1], [1.72, 0.07], [3.25, 0.1]]) gate.add(box(8.2, h, 0.09, steel, 0, y, 0, true));
+    for (const x of [-4, -2, 0, 2, 4]) gate.add(box(0.08, 3.15, 0.09, steel, x, 1.72, 0, true));
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(8, 3.05), new THREE.MeshPhysicalMaterial({ color: C("#a9c8ff"), transparent: true, opacity: 0.2, roughness: 0.03, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false, clearcoat: 1, envMapIntensity: 2.2 }));
+    glass.position.set(0, 1.72, -0.02); gate.add(glass);
+    const ts = std({ color: C("#3a4256"), metalness: 0.7, roughness: 0.25 });
+    const led = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.4, 2.6, 1.0), toneMapped: false });
+    for (const x of [-1.6, 0, 1.6]) { g.add(box(0.28, 1.0, 0.9, ts, x, 0.5, -1.4, true)); g.add(box(0.07, 0.07, 0.07, led, x, 1.05, -0.94)); }
+    const lobby = new THREE.PointLight(C("#bcd6ff"), 0.9, 8); lobby.position.set(0, 2.4, -2.2); g.add(lobby);
+    const banner = makeBanner("하반기 신입공채 최종합격 기원", "#1f3b7a", "#eef3ff", 5.95); g.add(banner.obj); T.anim.push(banner);
+
+    T.addWeather(makeRain(1100));
+    T.addWeather(makeMist(C("#7f93c8"), 0.09));
+  }
+
+  function buildCert(T) {
+    const g = T.g;
+    G.skyMat.uniforms.uTop.value = C("#060c18"); G.skyMat.uniforms.uHor.value = C("#22304a"); G.skyMat.uniforms.uBot.value = C("#0a0f18"); G.skyMat.uniforms.uGlowAmt.value = 0.18;
+    scene.fog = new THREE.Fog(C("#1a2436"), 20, 75); G.moon.visible = true; G.hemi.intensity = 0.72;
+    addGround(g, "concrete");
+    g.add(building(19, 5, 3, 0, 2.5, -8.5, windowsTex(16, 3, 0.32, 41, "#2c3241", ["#fff2c9", "#e8f1ff"], "#3a4256", 1024, 260, { blinds: true }), "#2c3241", 1.1));
+    g.add(box(19.4, 0.35, 3.3, std({ color: C("#232836") }), 0, 5.1, -8.5));
+    const sign = textPlane(6, 0.8, 1000, 132, (x, w, h) => {
+      x.fillStyle = "#14325a"; x.fillRect(0, 0, w, h); x.fillStyle = "#ffffff"; x.font = "78px 'Black Han Sans', sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("합격자격시험센터", w / 2, h / 2 + 4);
+    }, { emissive: C("#ffffff"), emissiveIntensity: 0.3 });
+    sign.material.emissiveMap = sign.userData.tex; sign.position.set(0, 4.35, -6.98); g.add(sign);
+    // live LED countdown board on the facade
+    const boardCv = document.createElement("canvas"); boardCv.width = 512; boardCv.height = 96;
+    const boardTex = new THREE.CanvasTexture(boardCv); boardTex.encoding = THREE.sRGBEncoding;
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.6), new THREE.MeshBasicMaterial({ map: boardTex, color: new THREE.Color(1.8, 1.8, 1.8), toneMapped: false }));
+    board.position.set(0, 3.45, -6.97); g.add(board);
+    let lastSec = -1;
+    T.extra.push(() => {
+      const o = seoulParts(); if (o.second === lastSec) return; lastSec = o.second;
+      const left = (59 - o.minute) * 60 + (60 - o.second);
+      const mm = String(Math.floor(left / 60) % 60).padStart(2, "0"), ss = String(left % 60).padStart(2, "0");
+      const x = boardCv.getContext("2d"); x.fillStyle = "#050302"; x.fillRect(0, 0, 512, 96);
+      x.font = "34px 'Black Han Sans', sans-serif"; x.textBaseline = "middle"; x.fillStyle = "#6fcf97"; x.fillText("다음 회차 입실까지", 18, 48);
+      x.fillStyle = "#ffb347"; x.font = "52px 'Black Han Sans', sans-serif"; x.textAlign = "right"; x.fillText(mm + ":" + ss, 494, 50); x.textAlign = "left";
+      boardTex.needsUpdate = true;
+    });
+
+    treePine(g, -2.9, -3.6, 1.1); treePine(g, 3.0, -3.9, 1.2); treePine(g, -6.5, -5, 1.3); treePine(g, 6.6, -5.2, 1.25);
+    stonePillars(g, brickTex(), "#3d3f46", true);
+    const plate = textPlane(0.56, 2.4, 128, 560, vertText("제1시험장", "#14325a", "#ffffff", "#e8eef8", "84px 'Black Han Sans', sans-serif"), { emissive: C("#ffffff"), emissiveIntensity: 0.15 });
+    plate.position.set(4.55, 2.4, 0.46); g.add(plate);
+
+    const gate = new THREE.Group(); T.gate = gate; g.add(gate);
+    const green = std({ color: C("#2f6b4c"), metalness: 0.55, roughness: 0.4 });
+    for (const [y, h] of [[0.2, 0.1], [3.25, 0.1]]) gate.add(box(8.2, h, 0.1, green, 0, y, 0, true));
+    for (const x of [-4, -1.33, 1.33, 4]) gate.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.15, 12), green, x, 1.72, 0, true));
+    const link = canvasTex(128, 128, (x, w, h) => {
+      x.clearRect(0, 0, w, h); x.strokeStyle = "#86c7a1"; x.lineWidth = 7;
+      x.beginPath(); x.moveTo(0, h / 2); x.lineTo(w / 2, 0); x.lineTo(w, h / 2); x.lineTo(w / 2, h); x.closePath(); x.stroke();
+    }, [18, 7]);
+    const fence = new THREE.Mesh(new THREE.PlaneGeometry(8, 3.05), std({ map: link, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.45 }));
+    fence.position.set(0, 1.72, 0); fence.castShadow = true; gate.add(fence);
+    const ab = textPlane(0.9, 1.0, 256, 288, (x, w, h) => {
+      x.fillStyle = "#f4ead5"; x.fillRect(0, 0, w, h); x.fillStyle = "#14325a"; x.fillRect(0, 0, w, 70);
+      x.fillStyle = "#fff"; x.font = "44px 'Black Han Sans', sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("수험생 안내", w / 2, 38);
+      x.fillStyle = "#2a2420"; x.font = "36px 'Black Han Sans', sans-serif"; x.fillText("신분증", w / 2, 130); x.fillText("수험표 지참", w / 2, 190);
+      x.fillStyle = "#c8352c"; x.fillText("입실 시간 엄수", w / 2, 250);
+    });
+    ab.position.set(-3.1, 0.55, 2.4); ab.rotation.x = -0.22; ab.rotation.y = 0.35; ab.castShadow = true; g.add(ab);
+    g.add(box(0.05, 1.1, 0.05, std({ color: C("#555") }), -3.1, 0.5, 2.15));
+    const banner = makeBanner("필기·실기 한 번에 합격 기원", "#226a49", "#f4ead5", 5.35); g.add(banner.obj); T.anim.push(banner);
+
+    const maple = leafTexture("maple");
+    g.add(groundLeaves(160, maple, 33));
+    T.addWeather(makeLeaves(46, maple, [16, 8, -3, 12]));
+    T.addWeather(makeMotes(140, C("#ffe1a8")));
+    T.addWeather(makeMist(C("#a8b8c8"), 0.15));
+  }
+
+  function disposeGroup(g) {
+    g.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      for (const m of mats) { for (const k of ["map", "emissiveMap", "roughnessMap"]) if (m[k]) m[k].dispose(); m.dispose(); }
+    });
+  }
+  function buildTheme(id) {
+    if (!renderer) return;
+    if (theme) { scene.remove(theme.g); disposeGroup(theme.g); G.twinkleMats = G.twinkleMats.filter((m) => m === G.stars.material); }
+    const T = { g: new THREE.Group(), anim: [], extra: [], weather: [], gate: null, gateKick: 0 };
+    T.addWeather = (w) => { T.weather.push(w); T.g.add(w.obj); };
+    T.setDensity = (k) => {
+      for (const w of T.weather) {
+        if (!w.n) continue;
+        const o = w.obj.isGroup ? w.obj.children[0] : w.obj;
+        if (o.isInstancedMesh) o.count = Math.max(1, Math.round(w.n * k));
+        else if (o.isLineSegments) o.geometry.setDrawRange(0, Math.round(w.n * k) * 2);
+        else o.geometry.setDrawRange(0, Math.round(w.n * k));
+      }
+    };
+    ({ suneung: buildSuneung, job: buildJob, cert: buildCert })[id](T);
+    scene.add(T.g);
+    theme = T;
+    T.setDensity(quality === "high" ? 1 : 0.45);
+  }
+
+  /* =====================================================================
+     DATA (db per server, room presence for live throws & head-count)
+     ===================================================================== */
+  const store = {};
+  for (const s of ORDER) store[s] = { others: new Map(), my: { n: 0, msgs: [], ts: 0 }, first: false };
+  let cur = ORDER.includes(location.hash.slice(1)) ? location.hash.slice(1) : "suneung";
+  let db = null, uid = null, readOnly = false, mode = "wait", room = null, onlineKnown = false;
+  const online = { suneung: 0, job: 0, cert: 0 };
+  const liveHits = new Map(), pendingLive = new Set(), seenHit = {};
+  let entries = [], hiddenKey = null, isOwner = false;
+  const hiddenSet = new Set(Array.isArray(lsGet("yeot.hidden")) ? lsGet("yeot.hidden").slice(-300) : []);
+
+  function sanitizeMsg(e, sid) {
+    if (!e || typeof e !== "object") return null;
+    const ts = Number(e.ts); if (!isFinite(ts)) return null;
+    const m0 = typeof e.m === "string" ? e.m.replace(/[\u0000-\u001f​-‏‪-‮⁦-⁩]/g, "").slice(0, 24) : "";
+    const m = m0;
+    const to = SERVERS[sid].to.includes(e.to) ? e.to : SERVERS[sid].to[0];
+    const x = Number(e.x), y = Number(e.y), a = Number(e.a);
+    const blocked = !!m && !MOD.check(m).ok;
+    return { m: blocked ? "" : m, blocked, to, ts, p: clamp(Math.round(Number(e.p) || 0), 0, 100),
+      x: isFinite(x) ? clamp(x, HIT.x0, HIT.x1) : null, y: isFinite(y) ? clamp(y, HIT.y0, HIT.y1) : null, a: isFinite(a) ? clamp(a, -1.6, 1.6) : null };
+  }
+  function sanitizeDoc(d, sid) {
+    const msgs = Array.isArray(d && d.msgs) ? d.msgs.slice(-6).map((e) => sanitizeMsg(e, sid)).filter(Boolean) : [];
+    const n = clamp(Math.floor(Number(d && d.n) || 0), 0, 99999);
+    return { n: Math.max(n, msgs.length), msgs, ts: Number(d && d.ts) || 0 };
+  }
+  function placeFor(key) { const r = rng(hashStr(key)), side = r() < 0.5 ? -1 : 1; return { x: lerp(HIT.x0, HIT.x1, r()), y: lerp(HIT.y0, HIT.y1, r()), a: side * (0.15 + r() * 0.95) }; }
+  function liveCount(sid) { let n = 0; liveHits.forEach((h) => { if (h.s === sid && !h.dup) n++; }); return n; }
+  function totals(sid) {
+    const st = store[sid];
+    if (st.stats) {
+      // server-side aggregate (standalone build): add my own throws since the last poll
+      const extra = Math.max(0, st.my.n - st.stats.myAt);
+      return { t: st.stats.t + extra + liveCount(sid), p: st.stats.p + (st.stats.myAt === 0 && st.my.n > 0 ? 1 : 0) };
+    }
+    let t = st.my.n, p = st.my.n > 0 ? 1 : 0;
+    st.others.forEach((d) => { t += d.n; if (d.n > 0) p++; });
+    return { t: t + liveCount(sid), p };
+  }
+  function rebuild() {
+    const st = store[cur], list = [], sigs = new Set();
+    const addDoc = (id, d, mine) => {
+      for (const e of d.msgs) { const key = id + ":" + e.ts, pl = placeFor(key); sigs.add(e.ts + "|" + e.x); list.push({ key, x: e.x ?? pl.x, y: e.y ?? pl.y, a: e.a ?? pl.a, m: hiddenSet.has(key) ? "" : e.m, to: e.to, ts: e.ts, mine }); }
+      const ghosts = Math.min(d.n - d.msgs.length, 8);
+      for (let i = 0; i < ghosts; i++) { const key = id + ":g" + i, pl = placeFor(key); list.push({ key, x: pl.x, y: pl.y, a: pl.a, m: "", to: "", ts: (d.ts || 0) - (i + 1) * 60000, mine }); }
+    };
+    st.others.forEach((d, id) => addDoc(id, d, false));
+    addDoc(uid || "me", st.my, true);
+    liveHits.forEach((h, key) => {
+      if (h.s !== cur || pendingLive.has(key)) return;
+      if (sigs.has(h.ts + "|" + h.x)) { h.dup = true; return; }
+      list.push({ key, x: h.x, y: h.y, a: h.a, m: hiddenSet.has(key) ? "" : h.m, to: h.to, ts: h.ts, mine: false, live: true });
+    });
+    list.sort((p, q) => p.ts - q.ts);
+    entries = list.slice(-240);
+    updateInstances(); renderFeed(); renderCounter(); renderServers();
+  }
+  function updateInstances() {
+    if (!G.stuck) return;
+    let k = 0;
+    entries.forEach((e, i) => {
+      if (e.key === hiddenKey) return;
+      const r = rng(hashStr(e.key + "t"));
+      G.e.set((r() - 0.5) * 0.3, (r() - 0.5) * 0.5, e.a); G.q.setFromEuler(G.e);
+      G.v[0].set(e.x, e.y, 0.13 + (i % 9) * 0.014);
+      G.stuck.setMatrixAt(k++, G.m4.compose(G.v[0], G.q, G.scaleStuck));
+    });
+    G.stuck.count = k; G.stuck.instanceMatrix.needsUpdate = true;
+  }
+
+  /* =====================================================================
+     UI
+     ===================================================================== */
+  let shownTotal = 0, targetTotal = 0, countAnim = 0;
+  function renderCounter() {
+    const S = SERVERS[cur], { t, p } = totals(cur);
+    $("tag").textContent = S.tag();
+    $("countLabel").textContent = mode === "local" ? "이 기기에서 " + S.name + "에 붙인 엿" : S.label;
+    $("people").textContent = fmt(p);
+    targetTotal = t;
+    if (!countAnim) countAnim = requestAnimationFrame(stepCount);
+  }
+  function stepCount() {
+    const d = targetTotal - shownTotal;
+    shownTotal = Math.abs(d) < 1 ? targetTotal : shownTotal + d * (reduceMotion ? 1 : 0.18);
+    $("total").textContent = fmt(shownTotal);
+    countAnim = shownTotal === targetTotal ? 0 : requestAnimationFrame(stepCount);
+  }
+  function crowd(n) { return n >= 50 ? [3, "혼잡"] : n >= 10 ? [2, "보통"] : [1, "쾌적"]; }
+  function renderServers() {
+    const wrap = $("servers");
+    if (!wrap.children.length) {
+      for (const sid of ORDER) {
+        const b = document.createElement("button"); b.type = "button"; b.className = "srv"; b.id = "srv-" + sid; b.style.setProperty("--c", SERVERS[sid].color);
+        const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = SERVERS[sid].name;
+        const st = document.createElement("span"); st.className = "st"; st.append(document.createElement("i"), document.createElement("span"));
+        const ct = document.createElement("span"); ct.className = "ct";
+        b.append(nm, st, ct); b.addEventListener("click", () => switchServer(sid)); wrap.appendChild(b);
+      }
+    }
+    for (const sid of ORDER) {
+      const b = $("srv-" + sid), { t, p } = totals(sid);
+      b.setAttribute("aria-current", String(sid === cur));
+      const who = onlineKnown ? online[sid] : p;
+      const [lv, word] = crowd(who);
+      const st = b.querySelector(".st"); st.dataset.lv = lv;
+      st.lastElementChild.textContent = word + " · " + (onlineKnown ? "접속 " : "참여 ") + fmt(who);
+      b.querySelector(".ct").textContent = "엿 " + fmt(t) + "개";
+    }
+    if (onlineKnown) { $("onlinePill").hidden = false; $("onlineTxt").textContent = SERVERS[cur].name + " 접속 " + fmt(online[cur]); }
+  }
+  function renderFeed() {
+    const ul = $("feed");
+    const items = entries.filter((e) => e.m).sort((a, b) => b.ts - a.ts).slice(0, 12);
+    ul.textContent = "";
+    if (!items.length) {
+      const li = document.createElement("li"); li.className = "empty";
+      li.textContent = mode === "wait" ? "응원을 불러오는 중이에요" : "아직 붙은 응원이 없어요. 이 서버의 첫 엿을 붙여 보세요.";
+      ul.appendChild(li); return;
+    }
+    for (const e of items) {
+      const li = document.createElement("li");
+      const m = document.createElement("div"); m.className = "m"; m.textContent = e.m;
+      const meta = document.createElement("div"); meta.className = "meta";
+      const to = document.createElement("span"); to.textContent = "To. " + e.to.replace(/에게$/, "");
+      const ago = document.createElement("span"); ago.textContent = timeAgo(e.ts);
+      meta.append(to, ago);
+      if (e.mine) { const b = document.createElement("span"); b.className = "mine"; b.textContent = "내 엿"; meta.append(b); }
+      else if (e.live) { const b = document.createElement("span"); b.className = "livebadge"; b.textContent = "실시간"; meta.append(b); }
+      const btn = document.createElement("button"); btn.type = "button"; btn.className = "mod";
+      const canDelete = e.mine || (isOwner && db && !e.live);
+      btn.textContent = e.mine ? "지우기" : canDelete ? "삭제" : "가리기";
+      btn.setAttribute("aria-label", (e.mine ? "내 응원 지우기: " : canDelete ? "이 응원 삭제: " : "이 응원 가리기: ") + e.m);
+      btn.addEventListener("click", () => moderate(e, btn, canDelete));
+      li.append(m, meta, btn); ul.appendChild(li);
+    }
+  }
+
+  function hideEntry(e) {
+    hiddenSet.add(e.key); lsSet("yeot.hidden", Array.from(hiddenSet).slice(-300));
+    rebuild(); hideBubble(); say("이 응원을 내 화면에서 가렸어요.");
+  }
+  async function moderate(e, btn, canDelete) {
+    if (!canDelete) { hideEntry(e); return; }
+    if (btn.dataset.armed !== "1") {
+      btn.dataset.armed = "1"; btn.classList.add("danger"); btn.textContent = "한 번 더";
+      setTimeout(() => { if (btn.isConnected) { btn.dataset.armed = ""; btn.classList.remove("danger"); btn.textContent = e.mine ? "지우기" : "삭제"; } }, 3000);
+      return;
+    }
+    const i = e.key.lastIndexOf(":"), id = e.key.slice(0, i), ts = Number(e.key.slice(i + 1));
+    if (e.mine) {
+      const st = store[cur]; st.my = { n: st.my.n, msgs: st.my.msgs.filter((x) => x.ts !== ts), ts: st.my.ts };
+      rebuild(); flush(cur); say("내 응원을 지웠어요. 엿 개수는 그대로예요."); return;
+    }
+    try {
+      const ref = db.collection(SERVERS[cur].col).doc(id), snap = await ref.get();
+      if (!snap.exists) return;
+      const d = snap.data() || {}, msgs = (Array.isArray(d.msgs) ? d.msgs : []).filter((x) => Number(x && x.ts) !== ts);
+      await ref.set({ n: Math.max(Number(d.n) || 0, msgs.length), msgs, ts: Number(d.ts) || Date.now() });
+      say("응원을 삭제했어요. 모든 사람 화면에서 사라져요.");
+    } catch (err) { say("삭제하지 못했어요. 잠시 후 다시 눌러 주세요."); }
+  }
+  function renderChips() {
+    const fs = $("toChips"), legend = fs.querySelector("legend");
+    fs.textContent = ""; fs.appendChild(legend);
+    SERVERS[cur].to.forEach((t, i) => {
+      const lab = document.createElement("label"); lab.className = "chip";
+      const inp = document.createElement("input"); inp.type = "radio"; inp.name = "to"; inp.value = t; inp.id = "to-" + cur + "-" + i; if (i === 0) inp.checked = true;
+      const sp = document.createElement("span"); sp.textContent = t; lab.append(inp, sp); fs.appendChild(lab);
+    });
+  }
+  function setMode(m, txt) { mode = m; $("sync").dataset.mode = m; $("syncTxt").textContent = txt; renderCounter(); }
+  let cheerIdx = 0;
+  function applyServerUI() {
+    const S = SERVERS[cur];
+    document.documentElement.style.setProperty("--srv", S.color);
+    $("feedSrv").textContent = S.name; $("foot").textContent = S.foot;
+    $("sceneSrv").textContent = S.name; $("sceneWeather").textContent = S.weather;
+    renderChips();
+    cheerIdx = Math.floor(Math.random() * S.cheers.length);
+    msgInput.placeholder = S.cheers[cheerIdx]; msgInput.value = ""; $("msgCount").textContent = "0/24";
+    $("msgWarn").hidden = true; msgInput.removeAttribute("aria-invalid");
+  }
+  function switchServer(sid, fromHash) {
+    if (!SERVERS[sid] || sid === cur) return;
+    if (phase === "charging" || phase === "flying") return;
+    cur = sid;
+    if (!fromHash) { try { history.replaceState(null, "", "#" + sid); } catch (e) { /* ignore */ } }
+    hideBubble(); statusEl.textContent = "";
+    applyServerUI(); buildTheme(sid); startIntro();
+    shownTotal = 0; rebuild();
+    if (room) room.presence({ s: sid }).catch(() => {});
+    if (audioPrimed && soundOn) startAmbient();
+  }
+  window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (ORDER.includes(h)) switchServer(h, true); });
+
+  /* ---------- persistence ---------- */
+  const writers = {};
+  async function flush(sid) {
+    const st = store[sid];
+    if (!db || !uid || readOnly) { lsSet("yeot3.local." + sid, st.my); return; }
+    const w = writers[sid] || (writers[sid] = { busy: false, dirty: false });
+    if (w.busy) { w.dirty = true; return; }
+    w.busy = true;
+    do {
+      w.dirty = false;
+      try { await db.collection(SERVERS[sid].col).doc(uid).set({ n: st.my.n, msgs: st.my.msgs.slice(-6), ts: Date.now() }); }
+      catch (e) {
+        if (e && (e.code === "invalid_argument" || e.code === "revoked" || e.code === "not_granted")) {
+          readOnly = true; lsSet("yeot3.local." + sid, st.my);
+          setMode("local", "보기 전용이라 내 엿은 집계 대신 지금 접속한 사람들에게만 보여요");
+        } else setMode("live", "잠시 연결이 불안정해요. 다음 엿과 함께 다시 보낼게요");
+        break;
+      }
+    } while (w.dirty);
+    w.busy = false;
+  }
+
+  function handlePeer(p, initial) {
+    if (!p || p.isMe || p.kind === "agent") return;
+    const h = p.presence && p.presence.hit;
+    if (!h || typeof h !== "object") return;
+    const ts = Number(h.ts); if (!isFinite(ts)) return;
+    if ((seenHit[p.peer] || 0) >= ts) return;
+    seenHit[p.peer] = ts;
+    if (initial || Date.now() - ts > 90000) return;
+    const s = typeof h.s === "string" && SERVERS[h.s] ? h.s : null; if (!s) return;
+    const msg = sanitizeMsg(h, s); if (!msg || msg.x == null || msg.y == null) return;
+    const key = "live:" + p.peer + ":" + ts;
+    liveHits.set(key, Object.assign(msg, { s, a: msg.a ?? 0.4 }));
+    if (liveHits.size > 80) liveHits.delete(liveHits.keys().next().value);
+    if (s === cur && renderer && !document.hidden) { pendingLive.add(key); spawnRemote(key, msg); }
+    else if (s === cur) rebuild(); else renderServers();
+  }
+
+  async function connect() {
+    const fallback = (txt) => {
+      for (const sid of ORDER) { const l = lsGet("yeot3.local." + sid); if (l && typeof l === "object") store[sid].my = sanitizeDoc(l, sid); }
+      setMode("local", txt); rebuild();
+    };
+    if (!window.claude || typeof window.claude.use !== "function") { fallback("서버에 연결되지 않아 이 기기에만 붙어요"); return; }
+    window.claude.use("room").then((r) => {
+      if (!r) return; room = r;
+      const count = (peers) => {
+        online.suneung = online.job = online.cert = 0;
+        for (const p of peers) { if (p.kind === "agent") continue; const s = p.presence && p.presence.s; if (online[s] != null) online[s]++; }
+        onlineKnown = true; renderServers();
+      };
+      try {
+        for (const p of r.peers()) handlePeer(p, true);
+        r.onPeers((ch) => { count(ch.peers); for (const p of ch.joined) handlePeer(p, true); for (const p of ch.updated) handlePeer(p, false); });
+        r.presence({ s: cur }).catch(() => {}); count(r.peers());
+      } catch (e) { /* optional */ }
+    }).catch(() => {});
+
+    let user = null;
+    try { [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]); } catch (e) { db = null; }
+    if (!db) { fallback("서버 집계에 연결되지 않아 이 기기에만 붙어요"); return; }
+    try { uid = user ? await user.id() : null; } catch (e) { uid = null; }
+    let can = null; try { can = user ? await user.can("data.write") : null; } catch (e) { can = null; }
+    try { isOwner = user ? !!(await user.isOwner()) : false; } catch (e) { isOwner = false; }
+    if (!uid || can === false) readOnly = true;
+
+    const live = () => readOnly ? setMode("local", "보기 전용이라 내 엿은 집계 대신 지금 접속한 사람들에게만 보여요") : setMode("live", "실시간으로 서버 엿을 세고 있어요");
+    const timer = setTimeout(() => { if (mode === "wait") { setMode(readOnly ? "local" : "live", "서버 응답이 늦어요. 내 엿은 그대로 붙어요"); rebuild(); } }, 10000);
+    for (const sid of ORDER) {
+      const st = store[sid];
+      if (uid) {
+        try { const mine = await db.collection(SERVERS[sid].col).doc(uid).get(); if (mine.exists) { st.my = sanitizeDoc(mine.data(), sid); st.myLoaded = true; } } catch (e) { /* fall back to the live list */ }
+      }
+      if (typeof db.stats === "function") {
+        db.stats(SERVERS[sid].col, (agg) => { st.stats = { t: Number(agg.t) || 0, p: Number(agg.p) || 0, myAt: st.my.n }; if (sid === cur) renderCounter(); renderServers(); });
+      }
+      db.collection(SERVERS[sid].col).onSnapshot((snap) => {
+        st.others.clear();
+        for (const d of snap.docs) {
+          if (!d.exists) continue;
+          const data = sanitizeDoc(d.data(), sid);
+          if (uid && d.id === uid) { if (!st.first && !st.myLoaded) st.my = data; continue; }
+          st.others.set(d.id, data);
+        }
+        if (!snap.metadata.fromCache) { st.first = true; if (mode === "wait") { clearTimeout(timer); live(); } }
+        if (sid === cur) rebuild(); else renderServers();
+      }, () => {
+        st.first = true;
+        if (sid === cur) { clearTimeout(timer); setMode("local", "서버에 연결할 수 없어 이 기기에만 붙어요"); rebuild(); }
+      });
+    }
+  }
+
+  /* =====================================================================
+     GAME
+     ===================================================================== */
+  const throwBtn = $("throwBtn"), throwTxt = $("throwTxt"), throwFill = $("throwFill"), statusEl = $("status"), msgInput = $("msg");
+  let phase = "idle", chargeStart = 0, power = 0, aim = 0, aimStartX = null, flight = null, lastResult = null, lastZone = -1;
+  const particles = [], remotes = [];
+  let shake = 0, flash = 0, timeScale = 1, slowUntil = 0, push = 0, pushTarget = 0, pushPoint = null, captureNext = false, snapshot = null;
+  const intro = { t: 1, dur: 2.0, start: 0 };
+
+  function say(t) { statusEl.textContent = t; }
+  function powerAt(t) { const x = ((t - chargeStart) % 1300) / 1300; return x < 0.5 ? x * 2 : 2 - x * 2; }
+  function startPoint(out) { return out.set(camera.position.x + 0.5, camera.position.y - 0.95, camera.position.z - 4.0); }
+  function landing(p, a) {
+    if (p < STICK_LO) { const k = p / STICK_LO; return { outcome: "short", x: a * 3.1 * lerp(0.35, 0.95, k), y: 0.08, z: lerp(8.5, 1.9, k) }; }
+    if (p > STICK_HI) return { outcome: "bounce", x: a * 3.1, y: 3.26, z: 0.13 };
+    return { outcome: p >= PERF_LO && p <= PERF_HI ? "perfect" : "stick", x: a * 3.1, y: lerp(HIT.y0 + 0.05, HIT.y1 - 0.05, (p - STICK_LO) / (STICK_HI - STICK_LO)), z: 0.13 };
+  }
+  function arcPoint(S, T, t, h, out) { return out.set(lerp(S.x, T.x, t), lerp(S.y, T.y, t) + Math.sin(Math.PI * t) * h, lerp(S.z, T.z, t)); }
+
+  function startCharge(clientX) {
+    if (phase !== "idle" || !renderer) return;
+    if (!validateMsg()) { say($("msgWarn").textContent); msgInput.focus({ preventScroll: true }); return; }
+    audio(); primeAudio(); hideBubble();
+    phase = "charging"; chargeStart = performance.now(); power = 0; aim = 0; aimStartX = clientX ?? null; lastZone = -1;
+    throwBtn.classList.add("is-charging"); throwTxt.textContent = "지금 떼면 던져요!";
+    sceneEl.classList.add("charging"); statusEl.textContent = "";
+  }
+  function moveAim(clientX) { if (phase === "charging" && aimStartX != null) aim = clamp((clientX - aimStartX) / 120, -1, 1); }
+  function release() {
+    if (phase !== "charging") return;
+    throwBtn.classList.remove("is-charging"); throwFill.style.width = "0%"; sceneEl.classList.remove("charging");
+    launch(power);
+  }
+  function launch(p) {
+    phase = "flying"; throwBtn.disabled = true; throwTxt.textContent = "날아가는 중…"; sceneEl.classList.add("flying");
+    G.aim.visible = false; G.aimRing.visible = false; sfx.whoosh();
+    const L = landing(p, aim);
+    L.x += (Math.random() - 0.5) * 0.5;
+    if (L.outcome !== "short") L.x = clamp(L.x, HIT.x0, HIT.x1);
+    const S = startPoint(new THREE.Vector3()), T = new THREE.Vector3(L.x, L.y, L.z), dist = S.distanceTo(T);
+    const turns = (n) => Math.PI * 2 * n * (Math.random() < 0.5 ? 1 : -1);
+    G.trailPts.length = 0;
+    flight = {
+      stage: "fly", t: 0, dur: reduceMotion ? 0.3 : 0.62 + dist * 0.012, p, outcome: L.outcome, S, T,
+      h: L.outcome === "short" ? 0.9 : 1.1 + dist * 0.06,
+      a0: -0.4, a1: (Math.random() < 0.5 ? -1 : 1) * (0.2 + Math.random() * 0.8), rx: turns(1), ry: turns(2), rz: turns(1),
+      flatX: L.outcome === "short" ? Math.PI / 2 : 0
+    };
+  }
+  function impactFX(at, perfect, big) {
+    burst(at, perfect ? 110 : big ? 40 : 22, perfect);
+    G.ring.position.copy(at); G.ring.position.z += 0.05; G.ring.userData.t = 0; G.ring.userData.max = perfect ? 3.2 : 1.8; G.ring.visible = true;
+    G.hitLight.position.set(at.x, at.y, at.z + 0.6); G.hitLight.intensity = perfect ? 6 : 2.5;
+    if (theme && theme.gate) theme.gateKick = perfect ? 1 : 0.55;
+  }
+  function onLand() {
+    const f = flight;
+    if (f.outcome === "short") {
+      sfx.thud(); floatAt(f.T, "앗, 짧아요!", "dim"); burst(f.T, 10, false);
+      say("힘이 모자라서 교문까지 못 갔어요. 조금 더 오래 눌러 보세요.");
+      f.stage = "fade"; f.t = 0; f.dur = reduceMotion ? 0.2 : 0.9; return;
+    }
+    if (f.outcome === "bounce") {
+      sfx.ting(); floatAt(f.T, "팅!", "dim"); burst(f.T, 12, false); if (theme) theme.gateKick = 0.4;
+      say("너무 세게 던져서 위쪽에 맞고 튕겨 나갔어요.");
+      f.stage = "bounce"; f.t = 0; f.dur = reduceMotion ? 0.3 : 1.1;
+      f.v = new THREE.Vector3((Math.random() - 0.5) * 1.5, 2.2, 4.2); f.pos = f.T.clone(); return;
+    }
+    const perfect = f.outcome === "perfect";
+    perfect ? sfx.perfect() : sfx.stick();
+    impactFX(f.T, perfect, true);
+    floatAt(f.T, perfect ? "찰떡!" : "착!", perfect ? "big" : "");
+    if (perfect && !reduceMotion) { shake = 1; flash = 1; slowUntil = performance.now() + 650; pushTarget = 1; pushPoint = f.T.clone(); setTimeout(() => { pushTarget = 0; }, 1100); }
+    else if (!reduceMotion) shake = 0.35;
+    const accuracy = perfect ? 100 : clamp(Math.round(100 - Math.abs(f.p - (PERF_LO + PERF_HI) / 2) / 0.15 * 18), 82, 99);
+    const S = SERVERS[cur], st = store[cur];
+    const typed = msgInput.value.trim();
+    const m = (typed && MOD.check(typed).ok ? typed : msgInput.placeholder).slice(0, 24);
+    const to = (document.querySelector("input[name=to]:checked") || {}).value || S.to[0];
+    const ts = Date.now();
+    const entry = { m, to, ts, p: accuracy, x: Math.round(f.T.x * 100) / 100, y: Math.round(f.T.y * 100) / 100, a: Math.round(f.a1 * 100) / 100 };
+    st.my = { n: st.my.n + 1, msgs: st.my.msgs.concat(entry).slice(-6), ts };
+    f.key = (uid || "me") + ":" + ts; hiddenKey = f.key;
+    f.stage = "wobble"; f.t = 0; f.dur = reduceMotion ? 0.12 : 0.6;
+    rebuild(); flush(cur);
+    if (room) room.presence({ s: cur, hit: Object.assign({ s: cur }, entry) }).catch(() => {});
+    lastResult = { sid: cur, m, to, accuracy, perfect, nth: totals(cur).t, fortune: S.fortunes[Math.floor(Math.random() * S.fortunes.length)] };
+    snapshot = null; setTimeout(() => { captureNext = true; }, perfect ? 380 : 180);
+    say(perfect ? "찰떡같이 붙었어요! 합격 기운 100%" : "착 붙었어요! 합격 기운 " + accuracy + "%");
+  }
+  function finishFlight() {
+    const f = flight; flight = null; sceneEl.classList.remove("flying");
+    if (f && f.stage === "wobble") { hiddenKey = null; updateInstances(); phase = "done"; setTimeout(showResult, reduceMotion ? 80 : 520); }
+    else resetThrow();
+  }
+  function resetThrow() { phase = "idle"; if (G.thrown) G.thrown.visible = true; throwBtn.disabled = false; throwTxt.textContent = "꾹 눌러서 힘 모으기"; }
+
+  function spawnRemote(key, msg) {
+    const meshR = G.remotePool.find((m) => !m.visible);
+    if (!meshR) { pendingLive.delete(key); rebuild(); return; }
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const S = new THREE.Vector3(side * (5 + Math.random() * 2), 2 + Math.random() * 2.5, 9 + Math.random() * 2);
+    const T = new THREE.Vector3(msg.x, msg.y, 0.13);
+    meshR.visible = true; meshR.scale.setScalar(1.2);
+    remotes.push({ key, mesh: meshR, S, T, t: 0, dur: 0.95, h: 1.4, a1: msg.a ?? 0.4, rz: Math.PI * 4 * side, rx: Math.PI * 2 });
+  }
+
+  function burst(at, n, gold) {
+    if (reduceMotion) n = Math.min(n, 10);
+    const cs = gold ? G.colGold : G.colAmber;
+    for (let i = 0; i < n; i++) {
+      if (particles.length >= G.sparkN) particles.shift();
+      const v = new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 1.6 + 0.2, Math.random() * 1.4).normalize().multiplyScalar(1.4 + Math.random() * (gold ? 4.5 : 2.6));
+      particles.push({ p: at.clone(), v, life: 0.8 + Math.random() * 0.4, c: cs[Math.floor(Math.random() * cs.length)] });
+    }
+  }
+  function updateSparks(dt) {
+    const pos = G.sparks.geometry.attributes.position, col = G.sparks.geometry.attributes.color;
+    for (let i = particles.length - 1; i >= 0; i--) { const q = particles[i]; q.life -= dt * 1.2; if (q.life <= 0) { particles.splice(i, 1); continue; } q.v.y -= 6.5 * dt; q.v.multiplyScalar(1 - dt * 0.8); q.p.addScaledVector(q.v, dt); }
+    for (let i = 0; i < G.sparkN; i++) {
+      const q = particles[i];
+      if (q) { const l = Math.min(1, q.life); pos.setXYZ(i, q.p.x, q.p.y, q.p.z); col.setXYZ(i, q.c.r * 2.2 * l, q.c.g * 2.2 * l, q.c.b * 2.2 * l); }
+      else pos.setXYZ(i, 0, -50, 0);
+    }
+    pos.needsUpdate = true; col.needsUpdate = true;
+  }
+  function updateTrail(dt, pt) {
+    if (pt) { G.trailPts.unshift({ p: pt.clone().add(G.v[5].set((Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.06, 0)), life: 1 }); if (G.trailPts.length > G.trailN) G.trailPts.pop(); }
+    const pos = G.trail.geometry.attributes.position, col = G.trail.geometry.attributes.color;
+    for (let i = G.trailPts.length - 1; i >= 0; i--) { G.trailPts[i].life -= dt * 2.4; if (G.trailPts[i].life <= 0) G.trailPts.splice(i, 1); }
+    for (let i = 0; i < G.trailN; i++) {
+      const q = G.trailPts[i];
+      if (q) { const l = q.life * (1 - i / G.trailN); pos.setXYZ(i, q.p.x, q.p.y, q.p.z); col.setXYZ(i, 1.6 * l, 1.1 * l, 0.45 * l); }
+      else pos.setXYZ(i, 0, -50, 0);
+    }
+    pos.needsUpdate = true; col.needsUpdate = true;
+  }
+
+  function toScreen(p) { const v = G.v[4].copy(p).project(camera); return { x: (v.x + 1) / 2 * viewW, y: (1 - v.y) / 2 * viewH }; }
+  function floatAt(p, text, cls) {
+    const s = toScreen(p), el = document.createElement("div");
+    el.className = "fl" + (cls ? " " + cls : ""); el.textContent = text;
+    el.style.left = clamp(s.x, 56, viewW - 56) + "px"; el.style.top = clamp(s.y - 22, 44, viewH - 40) + "px";
+    $("floats").appendChild(el); setTimeout(() => el.remove(), 1200);
+  }
+
+  /* =====================================================================
+     CAMERA + RENDER LOOP
+     ===================================================================== */
+  const introFrom = () => ({ pos: new THREE.Vector3(G.camBase.x + 2.5, G.camBase.y + 5.5, G.camBase.z + 9), look: new THREE.Vector3(0, 4.5, -6) });
+  let introA = null;
+  function startIntro() { if (!renderer || reduceMotion) { intro.t = 1; return; } intro.t = 0; intro.start = performance.now(); introA = introFrom(); }
+
+  const autoQ = { samples: 0, sum: 0, done: false, locked: !!lsGet("yeot.gfx") };
+  let last = performance.now(), simT = 0;
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (document.hidden) { last = now; return; }
+    const rdt = Math.min(0.05, (now - last) / 1000); last = now;
+    timeScale = now < slowUntil ? 0.3 : lerp(timeScale, 1, 0.12);
+    const dt = rdt * timeScale; simT += dt;
+
+    // auto quality: drop to low when the device struggles
+    if (!autoQ.done && !autoQ.locked && quality === "high" && simT > 1.5) {
+      autoQ.sum += rdt; autoQ.samples++;
+      if (autoQ.samples >= 120) { autoQ.done = true; if (autoQ.sum / autoQ.samples > 0.036) { applyQuality("low", true); say("화면이 버벅여서 그래픽을 낮췄어요. 오른쪽 위에서 바꿀 수 있어요."); } }
+    }
+
+    // camera
+    const sway = reduceMotion ? 0 : 1;
+    const pos = G.v[1].set(G.camBase.x + Math.sin(simT / 2.6) * 0.14 * sway + (phase === "charging" ? aim * 0.3 : 0), G.camBase.y + Math.sin(simT / 1.9) * 0.06 * sway, G.camBase.z);
+    const look = G.v[2].copy(G.camLook);
+    if (intro.t < 1 && introA) {
+      intro.t = clamp((now - intro.start) / (intro.dur * 1000), 0, 1); const e = easeInOut(intro.t);
+      pos.lerpVectors(introA.pos, pos.clone(), e); look.lerpVectors(introA.look, look.clone(), e);
+    }
+    push = lerp(push, pushTarget, 1 - Math.pow(0.002, rdt));
+    if (pushPoint && push > 0.001) { pos.lerp(G.v[3].set(pushPoint.x * 0.6, pushPoint.y + 0.5, 7.5), push * 0.55); look.lerp(pushPoint, push * 0.65); }
+    if (shake > 0) { pos.x += (Math.random() - 0.5) * 0.14 * shake; pos.y += (Math.random() - 0.5) * 0.14 * shake; shake = Math.max(0, shake - rdt * 2.6); }
+    camera.position.copy(pos); camera.lookAt(look);
+    const fovT = phase === "charging" ? 46.5 : 50; if (Math.abs(camera.fov - fovT) > 0.01) { camera.fov = lerp(camera.fov, fovT, 0.08); camera.updateProjectionMatrix(); }
+
+    // charging: gauge + preview arc
+    if (phase === "charging") {
+      power = powerAt(now);
+      throwFill.style.width = (power * 100).toFixed(1) + "%";
+      $("needle").style.bottom = (power * 100).toFixed(1) + "%";
+      const zone = power < STICK_LO ? 0 : power > STICK_HI ? 2 : (power >= PERF_LO && power <= PERF_HI ? 3 : 1);
+      if (zone !== lastZone && zone >= 1) sfx.tick();
+      lastZone = zone;
+      const L = landing(power, aim), S = startPoint(G.v[0]), T = G.v[3].set(L.x, L.y, L.z);
+      const h = L.outcome === "short" ? 0.9 : 1.1 + S.distanceTo(T) * 0.06;
+      const ap = G.aim.geometry.attributes.position, P = G.v[5];
+      for (let i = 0; i <= 48; i++) { arcPoint(S, T, i / 48, h, P); ap.setXYZ(i, P.x, P.y, P.z); }
+      ap.needsUpdate = true; G.aim.computeLineDistances();
+      G.aim.material.color.copy(G.zone[zone]); G.aim.visible = true;
+      G.aimRing.position.copy(T); G.aimRing.position.z += L.outcome === "short" ? 0 : 0.06;
+      G.aimRing.rotation.set(L.outcome === "short" ? -Math.PI / 2 : 0, 0, 0);
+      G.aimRing.material.color.copy(G.zone[zone]); G.aimRing.scale.setScalar(1 + Math.sin(now / 90) * 0.12); G.aimRing.visible = true;
+    }
+
+    // own yeot
+    const Y = G.thrown;
+    if (phase === "idle" || phase === "charging") {
+      const S = startPoint(G.v[0]);
+      const bob = phase === "idle" && !reduceMotion ? Math.sin(simT / 0.42) * 0.04 : 0;
+      Y.position.set(S.x, S.y + bob - (phase === "charging" ? power * 0.12 : 0), S.z);
+      Y.rotation.set(0.25, -0.35 + aim * 0.4, -0.4 - (phase === "charging" ? power * 0.3 : 0));
+      Y.scale.setScalar(0.75);
+      updateTrail(rdt, null);
+    }
+    if (flight) {
+      const f = flight; f.t += dt; const t = clamp(f.t / f.dur, 0, 1);
+      if (f.stage === "fly") {
+        const e = easeOut(t), P = G.v[5];
+        arcPoint(f.S, f.T, t, f.h, P); Y.position.copy(P);
+        Y.scale.setScalar(lerp(0.75, f.outcome === "short" ? 1.2 : 1.5, e));
+        Y.rotation.set(f.rx * (1 - e) + f.flatX * e, f.ry * (1 - e), lerp(f.a0, f.a1, e) + f.rz * (1 - e));
+        updateTrail(dt, P);
+        if (t >= 1) onLand();
+      } else {
+        updateTrail(dt, null);
+        if (f.stage === "wobble") {
+          Y.position.copy(f.T);
+          Y.rotation.set(0, 0, f.a1 + Math.sin(t * Math.PI * 5) * 0.28 * (1 - t));
+          Y.scale.setScalar(1.5 * (1 + Math.sin(t * Math.PI) * 0.2 * (1 - t)));
+          if (t >= 1) finishFlight();
+        } else if (f.stage === "fade") {
+          Y.position.set(f.T.x + t * 0.15, f.T.y, f.T.z - t * 0.1); Y.scale.setScalar(1.2 * (1 - t * 0.6));
+          if (t >= 1) finishFlight();
+        } else if (f.stage === "bounce") {
+          f.v.y -= 9.8 * dt; f.pos.addScaledVector(f.v, dt);
+          if (f.pos.y < 0.1) { f.pos.y = 0.1; f.v.y *= -0.35; f.v.x *= 0.7; f.v.z *= 0.7; }
+          Y.position.copy(f.pos); Y.rotation.x += dt * 9; Y.rotation.z += dt * 6;
+          if (t >= 1) finishFlight();
+        }
+      }
+    }
+    if (phase === "done") Y.visible = false;
+
+    // other people's yeots arriving live
+    for (let i = remotes.length - 1; i >= 0; i--) {
+      const r = remotes[i]; r.t += dt; const t = clamp(r.t / r.dur, 0, 1), e = easeOut(t), P = G.v[5];
+      arcPoint(r.S, r.T, t, r.h, P); r.mesh.position.copy(P); r.mesh.rotation.set(r.rx * (1 - e), 0, lerp(0, r.a1, e) + r.rz * (1 - e)); r.mesh.scale.setScalar(lerp(1.0, 1.5, e));
+      if (t >= 1) {
+        r.mesh.visible = false; remotes.splice(i, 1); pendingLive.delete(r.key);
+        impactFX(r.T, false, false); sfx.remote(); floatAt(r.T, "누군가의 엿 착!", "peer"); rebuild();
+      }
+    }
+
+    // impact ring + hit light
+    if (G.ring.visible) { const u = G.ring.userData; u.t += dt; const k = u.t / 0.5; G.ring.scale.setScalar(1 + k * u.max); G.ring.material.opacity = Math.max(0, 0.9 * (1 - k)); if (k >= 1) G.ring.visible = false; }
+    G.hitLight.intensity = Math.max(0, G.hitLight.intensity - dt * 9);
+
+    // gate rattle
+    if (theme && theme.gate) { theme.gateKick = Math.max(0, theme.gateKick - dt * 2.2); theme.gate.position.z = Math.sin(simT * 55) * 0.025 * theme.gateKick; theme.gate.position.x = Math.sin(simT * 41) * 0.012 * theme.gateKick; }
+
+    // world animation
+    if (theme) { for (const a of theme.anim) a.update(dt, simT); for (const w of theme.weather) w.update(dt, simT); for (const x of theme.extra) x(); }
+    for (const m of G.twinkleMats) m.uniforms.uTime.value = simT;
+    G.beamMat.uniforms.uTime.value = simT;
+
+    updateSparks(dt);
+    flash = Math.max(0, flash - rdt * 2.4);
+    if (composer) {
+      bloom.strength = 0.6 + flash * 1.1;
+      grade.uniforms.uTime.value = simT; grade.uniforms.uFlash.value = flash;
+      composer.render(rdt);
+    } else renderer.render(scene, camera);
+    if (captureNext) { captureNext = false; try { snapshot = cv.toDataURL("image/jpeg", 0.92); } catch (e) { snapshot = null; } }
+  }
+
+  function resize() {
+    if (!renderer) return;
+    viewW = sceneEl.clientWidth; viewH = sceneEl.clientHeight; if (!viewW || !viewH) return;
+    renderer.setSize(viewW, viewH, false);
+    camera.aspect = viewW / viewH;
+    const half = Math.tan(THREE.MathUtils.degToRad(25));
+    G.camBase.z = Math.max(11.5, 5.35 / (half * camera.aspect));
+    camera.updateProjectionMatrix();
+    if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(viewW, viewH); }
+    for (const m of G.twinkleMats) m.uniforms.uScale.value = viewH * renderer.getPixelRatio() * 0.5;
+  }
+
+  /* =====================================================================
+     INPUT
+     ===================================================================== */
+  throwBtn.addEventListener("pointerdown", (e) => { if (e.button !== 0) return; e.preventDefault(); try { throwBtn.setPointerCapture(e.pointerId); } catch (_) {} startCharge(e.clientX); });
+  throwBtn.addEventListener("pointermove", (e) => moveAim(e.clientX));
+  throwBtn.addEventListener("pointerup", release);
+  throwBtn.addEventListener("pointercancel", release);
+  throwBtn.addEventListener("lostpointercapture", release);
+  throwBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+  throwBtn.addEventListener("keydown", (e) => {
+    if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); startCharge(null); }
+    if (phase === "charging" && (e.key === "ArrowLeft" || e.key === "ArrowRight")) { e.preventDefault(); aim = clamp(aim + (e.key === "ArrowLeft" ? -0.15 : 0.15), -1, 1); }
+  });
+  throwBtn.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); release(); } });
+
+  let holdTimer = 0, downAt = null;
+  cv.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    primeAudio();
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+    downAt = { x: e.clientX, y: e.clientY };
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => { holdTimer = 0; if (downAt) startCharge(downAt.x); }, 170);
+  });
+  cv.addEventListener("pointermove", (e) => moveAim(e.clientX));
+  const canvasUp = (e) => {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = 0; if (downAt && e.type === "pointerup") pick(e.clientX, e.clientY); }
+    else release();
+    downAt = null;
+  };
+  cv.addEventListener("pointerup", canvasUp);
+  cv.addEventListener("pointercancel", canvasUp);
+  cv.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  const bubble = $("bubble");
+  function pick(cx, cy) {
+    if (!renderer) return;
+    const r = cv.getBoundingClientRect(), x = cx - r.left, y = cy - r.top;
+    let best = null, bd = 30 * 30;
+    for (const e of entries) {
+      if (!e.m) continue;
+      const s = toScreen(G.v[0].set(e.x, e.y, 0.15)), d = (s.x - x) ** 2 + (s.y - y) ** 2;
+      if (d < bd) { bd = d; best = { e, s }; }
+    }
+    if (!best) { hideBubble(); return; }
+    const e = best.e;
+    $("bTo").textContent = "To. " + e.to.replace(/에게$/, "") + " · " + timeAgo(e.ts) + (e.mine ? " · 내 엿" : e.live ? " · 실시간" : "");
+    $("bMsg").textContent = e.m;
+    bubble.style.left = clamp(best.s.x, 80, r.width - 80) + "px"; bubble.style.top = Math.max(70, best.s.y) + "px";
+    bubble.hidden = false; $("aimtip").hidden = true;
+  }
+  function hideBubble() { bubble.hidden = true; }
+
+  function validateMsg() {
+    const r = MOD.check(msgInput.value), w = $("msgWarn");
+    if (r.ok) { w.hidden = true; msgInput.removeAttribute("aria-invalid"); return true; }
+    w.textContent = r.msg; w.dataset.cat = r.cat; w.hidden = false; msgInput.setAttribute("aria-invalid", "true");
+    return false;
+  }
+  let vTimer = 0;
+  msgInput.addEventListener("input", () => {
+    $("msgCount").textContent = msgInput.value.length + "/24";
+    clearTimeout(vTimer); vTimer = setTimeout(validateMsg, 220);
+  });
+  $("shuffle").addEventListener("click", () => {
+    const list = SERVERS[cur].cheers;
+    cheerIdx = (cheerIdx + 1 + Math.floor(Math.random() * (list.length - 1))) % list.length;
+    msgInput.value = list[cheerIdx]; msgInput.dispatchEvent(new Event("input"));
+  });
+
+  /* =====================================================================
+     RESULT CARD (with a real frame from the 3D scene)
+     ===================================================================== */
+  const card = document.createElement("canvas"); card.width = 1080; card.height = 1350;
+  function rr(c, x, y, w, h, r) { c.beginPath(); if (c.roundRect) { c.roundRect(x, y, w, h, r); return; } c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+  function wrapText(c, text, maxW, maxLines) { const lines = []; let ln = ""; for (const ch of text) { if (c.measureText(ln + ch).width > maxW && ln) { lines.push(ln); ln = ch; } else ln += ch; } if (ln) lines.push(ln); return lines.slice(0, maxLines); }
+  function loadImg(src) { return new Promise((res) => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
+  async function renderCard(res) {
+    try { await Promise.all(["64px 'Black Han Sans'", "64px 'Nanum Pen Script'", "32px 'Gowun Dodum'"].map((f) => document.fonts.load(f))); } catch (e) { /* fallback */ }
+    const S = SERVERS[res.sid], c = card.getContext("2d"), CW = 1080, CH = 1350;
+    let g = c.createLinearGradient(0, 0, 0, CH); g.addColorStop(0, "#0b1222"); g.addColorStop(1, "#18223b"); c.fillStyle = g; c.fillRect(0, 0, CW, CH);
+    g = c.createRadialGradient(160, 60, 0, 160, 60, 900); g.addColorStop(0, "rgba(255,200,120,0.16)"); g.addColorStop(1, "rgba(255,200,120,0)"); c.fillStyle = g; c.fillRect(0, 0, CW, CH);
+    c.font = "38px 'Black Han Sans', sans-serif"; c.textBaseline = "middle"; c.textAlign = "left";
+    const tag = S.name + " · " + S.tag(), tw = c.measureText(tag).width + 52;
+    c.fillStyle = S.color; rr(c, 80, 72, tw, 62, 8); c.fill(); c.fillStyle = "#111a2c"; c.fillText(tag, 106, 104);
+    c.fillStyle = "#ede6d6"; c.font = "92px 'Black Han Sans', sans-serif"; c.textBaseline = "alphabetic"; c.fillText("합격엿 교문", 80, 240);
+    // 3D snapshot
+    const img = await loadImg(snapshot);
+    const bx = 80, by = 280, bw = 920, bh = 620;
+    c.save(); rr(c, bx, by, bw, bh, 28); c.clip();
+    if (img) { const sw = img.width, sh = Math.min(img.height, sw * bh / bw), sy = clamp(img.height * 0.42 - sh / 2, 0, img.height - sh); c.drawImage(img, 0, sy, sw, sh, bx, by, bw, bh); }
+    else { c.fillStyle = "#121a2e"; c.fillRect(bx, by, bw, bh); c.fillStyle = "rgba(52,68,74,0.8)"; for (let x = bx + 30; x < bx + bw; x += 54) c.fillRect(x, by + 80, 8, bh - 120); }
+    g = c.createLinearGradient(0, by + bh - 200, 0, by + bh); g.addColorStop(0, "rgba(11,18,34,0)"); g.addColorStop(1, "rgba(11,18,34,0.85)"); c.fillStyle = g; c.fillRect(bx, by + bh - 200, bw, 200);
+    c.restore();
+    c.strokeStyle = "rgba(237,230,214,0.16)"; c.lineWidth = 2; rr(c, bx, by, bw, bh, 28); c.stroke();
+    // paper note
+    c.save(); c.translate(540, 1000); c.rotate(-0.022);
+    c.fillStyle = "rgba(0,0,0,0.4)"; rr(c, -428, -128, 868, 262, 20); c.fill();
+    c.fillStyle = "#f4ead5"; rr(c, -434, -136, 868, 262, 20); c.fill();
+    c.fillStyle = "#e0463a"; c.fillRect(-434, -136, 14, 262);
+    c.fillStyle = "#8a6a3a"; c.font = "34px 'Gowun Dodum', sans-serif"; c.textAlign = "left"; c.fillText("To. " + res.to.replace(/에게$/, ""), -380, -78);
+    c.fillStyle = "#2a2420"; c.font = "96px 'Nanum Pen Script', cursive";
+    const lines = wrapText(c, res.m, 780, 2), lh = 82, sy0 = lines.length > 1 ? 4 : 44;
+    lines.forEach((ln, i) => c.fillText(ln, -380, sy0 + i * lh));
+    c.restore();
+    // stats
+    c.textAlign = "left"; c.fillStyle = "#9ba5bd"; c.font = "30px 'Gowun Dodum', sans-serif"; c.fillText("합격 기운", 80, 1178);
+    c.textAlign = "right"; c.fillText(S.name + (mode === "local" ? " · 내가 붙인 " : " ") + fmt(res.nth) + "번째 엿", 1000, 1178);
+    c.textAlign = "left"; c.fillStyle = res.perfect ? "#ff6a55" : "#f6c567"; c.font = "92px 'Black Han Sans', sans-serif"; c.fillText(res.accuracy + "%", 80, 1262);
+    c.fillStyle = "#2c3654"; rr(c, 330, 1220, 670, 20, 10); c.fill();
+    g = c.createLinearGradient(330, 0, 1000, 0); g.addColorStop(0, "#e8a23a"); g.addColorStop(1, res.perfect ? "#ff5a45" : "#f6c567"); c.fillStyle = g; rr(c, 330, 1220, 670 * res.accuracy / 100, 20, 10); c.fill();
+    if (res.perfect) { c.fillStyle = "#ff6a55"; c.font = "40px 'Black Han Sans', sans-serif"; c.textAlign = "right"; c.fillText("찰떡 명중", 1000, 1206); }
+    c.textAlign = "left"; c.fillStyle = "#ede6d6"; c.font = "34px 'Gowun Dodum', sans-serif"; c.fillText("오늘의 운세 · " + res.fortune, 80, 1316);
+    return card.toDataURL("image/png");
+  }
+  let downloads = null;
+  async function showResult() {
+    if (!lastResult) { resetThrow(); return; }
+    const t = $("resTitle"); t.textContent = lastResult.perfect ? "찰떡! " : "착! ";
+    const em = document.createElement("em"); em.textContent = lastResult.perfect ? "합격 기운 100%" : "붙었어요"; t.append(em);
+    $("cardImg").src = await renderCard(lastResult);
+    $("saveBtn").hidden = !downloads;
+    $("shareBtn").hidden = !canShareFiles();
+    if (!$("shareBtn").hidden) $("saveBtn").hidden = true;
+    $("copyBtn").hidden = !SHARE_URL;
+    $("saveNote").textContent = downloads ? "저장한 카드를 보내 응원해 주세요." : "카드를 길게 눌러 저장하거나 캡처해서 보내 주세요.";
+    $("modal").hidden = false; $("againBtn").focus();
+  }
+  function closeResult() { $("modal").hidden = true; resetThrow(); throwBtn.focus(); }
+  $("againBtn").addEventListener("click", () => { msgInput.value = ""; msgInput.dispatchEvent(new Event("input")); closeResult(); });
+  $("modal").addEventListener("click", (e) => { if (e.target === $("modal")) closeResult(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("modal").hidden) closeResult(); });
+  // native share sheet + link copy: only where the page runs as a real website (YEOT_CONFIG.shareUrl set)
+  const SHARE_URL = (window.YEOT_CONFIG && typeof window.YEOT_CONFIG.shareUrl === "string" && /^https:\/\//.test(window.YEOT_CONFIG.shareUrl)) ? window.YEOT_CONFIG.shareUrl : "";
+  function canShareFiles() {
+    try { return !!(SHARE_URL && navigator.canShare && navigator.canShare({ files: [new File([""], "t.png", { type: "image/png" })] })); } catch (e) { return false; }
+  }
+  $("shareBtn").addEventListener("click", () => {
+    if (!lastResult) return;
+    card.toBlob(async (blob) => {
+      if (!blob) return;
+      const file = new File([blob], "합격엿-" + SERVERS[lastResult.sid].name + ".png", { type: "image/png" });
+      try { await navigator.share({ files: [file], title: "합격엿 교문", text: "나도 " + SERVERS[lastResult.sid].name + " 교문에 합격엿 붙이고 왔어! 너도 붙여줘 " + SHARE_URL + "#" + lastResult.sid }); $("saveNote").textContent = "공유했어요. 고마워요!"; }
+      catch (err) { if (!err || err.name !== "AbortError") $("saveNote").textContent = "공유 창을 열지 못했어요. 카드를 길게 눌러 저장해 주세요."; }
+    }, "image/png");
+  });
+  $("copyBtn").addEventListener("click", async () => {
+    const url = SHARE_URL + "#" + (lastResult ? lastResult.sid : cur);
+    try { await navigator.clipboard.writeText(url); $("copyBtn").textContent = "링크를 복사했어요"; }
+    catch (e) { $("copyBtn").textContent = url; }
+    setTimeout(() => { $("copyBtn").textContent = "게임 링크 복사"; }, 2400);
+  });
+  $("saveBtn").addEventListener("click", () => {
+    if (!downloads || !lastResult) return;
+    card.toBlob(async (blob) => {
+      if (!blob) return;
+      try { await downloads.save({ filename: "합격엿-" + SERVERS[lastResult.sid].name + ".png", data: blob }); $("saveNote").textContent = "저장했어요. 보내서 응원해 주세요."; }
+      catch (err) {
+        if (err && err.code === "declined") return;
+        if (err && err.code === "rate_limited") { $("saveNote").textContent = "저장 창이 이미 열려 있어요. 잠시 후 다시 눌러 주세요."; return; }
+        downloads = null; $("saveBtn").hidden = true; $("saveNote").textContent = "여기서는 저장할 수 없어요. 카드를 캡처해서 보내 주세요.";
+      }
+    }, "image/png");
+  });
+
+  /* =====================================================================
+     BOOT
+     ===================================================================== */
+  applyServerUI();
+  renderServers();
+  applyQuality(quality, true);
+  if (renderer) {
+    buildTheme(cur);
+    new ResizeObserver(resize).observe(sceneEl); resize();
+    startIntro();
+    requestAnimationFrame(frame);
+    if (document.fonts) document.fonts.load("40px 'Black Han Sans'").then(() => { buildTheme(cur); if (G.bandTex) { /* redraw band text with the real face */ const nb = canvasTex(512, 112, (x, w, h) => { x.fillStyle = "#d63c31"; x.fillRect(0, 0, w, h); x.fillStyle = "rgba(255,255,255,0.15)"; x.fillRect(0, 8, w, 6); x.fillRect(0, h - 14, w, 6); x.fillStyle = "#fff4e0"; x.font = "70px 'Black Han Sans', sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("합격", w * 0.25, h / 2 + 3); x.fillText("합격", w * 0.75, h / 2 + 3); }); G.yeotMats[1].map = nb; G.yeotMats[1].needsUpdate = true; } }).catch(() => {});
+  } else { throwBtn.disabled = true; }
+  rebuild();
+  connect();
+  if (window.claude && typeof window.claude.use === "function") window.claude.use("downloads").then((d) => { downloads = d; }).catch(() => {});
+  setInterval(() => { if (mode !== "wait") renderFeed(); }, 60000);
+})();
+</script>
+</body>
+</html>
